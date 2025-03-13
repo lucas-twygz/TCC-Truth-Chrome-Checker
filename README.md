@@ -45,7 +45,6 @@ O **TCC - Truth Chrome Checker** é uma extensão de navegador que permite aos u
 
 ## Estrutura do Projeto
 ```
-/
 ├── manifest.json          # Configuração da extensão do Chrome
 ├── index.html             # Interface do usuário
 ├── style.css              # Estilização da interface
