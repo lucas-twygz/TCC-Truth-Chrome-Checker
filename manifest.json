@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Analisador de Notícias Fake",
+    "name": "TCC - True Chrome Checker",
     "version": "1.0",
     "description": "Analisa notícias e estima a probabilidade de serem falsas usando a API do Gemini.",
     "permissions": [
