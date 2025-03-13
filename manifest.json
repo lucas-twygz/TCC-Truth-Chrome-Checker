@@ -1,0 +1,24 @@
+{
+    "manifest_version": 3,
+    "name": "Analisador de Notícias Fake",
+    "version": "1.0",
+    "description": "Analisa notícias e estima a probabilidade de serem falsas usando a API do Gemini.",
+    "permissions": [
+        "activeTab",
+        "storage"
+    ],
+    "host_permissions": [
+        "http://localhost:3000/*"
+    ],
+    "action": {
+        "default_popup": "index.html",
+        "default_icon": {
+            "16": "icon.png",
+            "48": "icon.png",
+            "128": "icon.png"
+        }
+    },
+    "content_security_policy": {
+        "extension_pages": "script-src 'self' http://localhost:3000; object-src 'self'"
+    }
+}

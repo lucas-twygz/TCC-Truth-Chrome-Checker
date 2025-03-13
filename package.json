@@ -1,0 +1,17 @@
+{
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "name": "tcc",
+  "version": "1.0.0",
+  "main": "server.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
