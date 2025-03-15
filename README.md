@@ -1,20 +1,29 @@
 # TCC - Truth Chrome Checker
 
 ## Descrição
-O **TCC - Truth Chrome Checker** é uma extensão de navegador que permite aos usuários inserir uma notícia e obter uma estimativa da probabilidade de ela ser falsa. O sistema utiliza a API do Gemini para analisar o conteúdo e fornecer um retorno baseado em padrões de desinformação.
+
+O **TCC - Truth Chrome Checker** é uma extensão de navegador que permite aos usuários analisar a veracidade de uma notícia com um clique. A extensão pode capturar automaticamente o conteúdo da página que o usuário está visitando com um clique de botão, utilizando **web scraping** com Puppeteer.
+
+O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornecer um retorno baseado em padrões de desinformação.
 
 ## Funcionalidades
+
 - Permite que o usuário insira uma notícia para análise.
+- **Nova função:** Captura automaticamente o conteúdo da página atual.
 - Usa a API do **Google Gemini** para processar e avaliar a veracidade da notícia.
 - Retorna uma estimativa em porcentagem da probabilidade de a notícia ser falsa.
 - Fornece uma justificativa concisa para a avaliação.
+- **Nova função:** Salva o conteúdo das páginas analisadas em arquivos `.txt` para referência posterior.
 
 ## Tecnologias Utilizadas
+
 - **Frontend:** HTML, CSS, JavaScript
 - **Backend:** Node.js com Express
-- **API:** Google Gemini
+- **Scraping:** Puppeteer
+- **API de Inteligência Artificial:** Google Gemini
 
 ## Como Usar
+
 1. Clone este repositório:
    ```bash
    git clone https://github.com/seuusuario/truth-chrome-checker.git
@@ -41,9 +50,11 @@ O **TCC - Truth Chrome Checker** é uma extensão de navegador que permite aos u
    - Ative o `Modo de desenvolvedor`
    - Clique em `Carregar sem compactação`
    - Selecione a pasta do projeto
-7. Abra a extensão, insira uma notícia e clique em **Enviar** para obter a análise.
+7. Para análise manual, insira uma notícia e clique em **Enviar**.
+8. Para análise automática, clique no botão de captura para que a extensão extraia o conteúdo da página e o analise automaticamente.
 
 ## Estrutura do Projeto
+
 ```
 ├── manifest.json          # Configuração da extensão do Chrome
 ├── index.html             # Interface do usuário
@@ -52,22 +63,17 @@ O **TCC - Truth Chrome Checker** é uma extensão de navegador que permite aos u
 ├── server.js              # Servidor Node.js para processar a análise
 ├── package.json           # Dependências do projeto
 ├── .env                   # Configuração da chave da API
-└── README.md              # Documentação do projeto
+├── captured_pages/        # Pasta onde os arquivos de scraping são armazenados
+├── README.md              # Documentação do projeto
 ```
 
 ## Configuração da API
+
 Antes de iniciar o projeto, é necessário configurar a chave da API do **Google Gemini**.
-1. Obtenha uma chave de API no Google Cloud.
-2. Crie um arquivo `.env` e adicione sua chave de API:
-   ```env
-   API_KEY=SUA_CHAVE_AQUI
-   ```
 
 ## Melhorias Futuras
+
 - Implementar análise baseada em busca na internet.
-- Scraping para pegar a notícia automaticamente.
 - Melhorar a interface com gráficos de confiabilidade.
-
-## Licença
-Este projeto é de código aberto e está disponível sob a licença MIT.
-
+- Criar um banco de dados para armazenar notícias analisadas para otimização.
+- Mudança de foco com base na analíse da vericidade de posts no **X**.

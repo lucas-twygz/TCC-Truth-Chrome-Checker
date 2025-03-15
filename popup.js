@@ -1,29 +1,30 @@
 document.addEventListener("DOMContentLoaded", function () {
-    document.getElementById("sendButton").addEventListener("click", sendPrompt);
+    document.getElementById("scrapeButton").addEventListener("click", scrapePage);
 });
 
-async function sendPrompt() {
-    const prompt = document.getElementById("promptInput").value;
+async function scrapePage() {
     const responseElement = document.getElementById("result");
-
-    if (!prompt) {
-        responseElement.textContent = "Por favor, insira uma notícia.";
-        return;
-    }
-
     responseElement.textContent = "Carregando...";
 
-    try {
-        const res = await fetch("http://localhost:3000/generate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt })
-        });
-
-        const data = await res.json();
-        responseElement.textContent = data.response || "Erro ao obter resposta.";
-    } catch (error) {
-        console.error("Erro:", error);
-        responseElement.textContent = "Erro ao conectar com o servidor.";
-    }
+    chrome.tabs.query({ active: true, currentWindow: true }, async function (tabs) {
+        if (!tabs.length) {
+            responseElement.textContent = "Nenhuma aba ativa encontrada.";
+            return;
+        }
+        
+        const pageUrl = tabs[0].url;
+        try {
+            const res = await fetch("http://localhost:3000/scrape", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: pageUrl })
+            });
+            
+            const data = await res.json();
+            responseElement.textContent = data.response || "Erro ao obter resposta.";
+        } catch (error) {
+            console.error("Erro:", error);
+            responseElement.textContent = "Erro ao conectar com o servidor.";
+        }
+    });
 }
