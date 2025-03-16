@@ -26,7 +26,7 @@ O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornec
 
 1. Clone este repositório:
    ```bash
-   git clone https://github.com/lucas-twygz/truth-chrome-checker.git
+   git clone https://github.com/lucas-twygz/TCC-Truth-Chrome-Checker.git
    ```
 2. Navegue até o diretório do projeto:
    ```bash
