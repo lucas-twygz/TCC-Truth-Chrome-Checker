@@ -1,4 +1,4 @@
-# TCC - Truth Chrome Checker
+9# TCC - Truth Chrome Checker
 
 ## Descrição
 
@@ -50,8 +50,7 @@ O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornec
    - Ative o `Modo de desenvolvedor`
    - Clique em `Carregar sem compactação`
    - Selecione a pasta do projeto
-7. Para análise manual, insira uma notícia e clique em **Enviar**.
-8. Para análise automática, clique no botão de captura para que a extensão extraia o conteúdo da página e o analise automaticamente.
+7. Para análise automática, clique no botão de captura para que a extensão extraia o conteúdo da página e o analise automaticamente.
 
 ## Estrutura do Projeto
 
