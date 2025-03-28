@@ -14,14 +14,21 @@ async function scrapePage() {
         
         const pageUrl = tabs[0].url;
         try {
-            const res = await fetch("http://localhost:3000/scrape", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url: pageUrl })
+            chrome.tabs.sendMessage(tabs[0].id, { action: "getArticle" }, async (msg) => {
+                if (!msg?.article) {
+                    responseElement.textContent = "Não foi possível extrair o conteúdo da página.";
+                    return;
+                }
+
+                const res = await fetch("http://localhost:3000/scrape", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url: pageUrl, content: msg.article })
+                });
+
+                const data = await res.json();
+                responseElement.textContent = data.response || "Erro ao obter resposta.";
             });
-            
-            const data = await res.json();
-            responseElement.textContent = data.response || "Erro ao obter resposta.";
         } catch (error) {
             console.error("Erro:", error);
             responseElement.textContent = "Erro ao conectar com o servidor.";

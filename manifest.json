@@ -10,6 +10,17 @@
     "host_permissions": [
         "http://localhost:3000/*"
     ],
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "readability.js",
+                "content.js"
+            ]
+        }
+    ],
     "action": {
         "default_popup": "index.html",
         "default_icon": {
