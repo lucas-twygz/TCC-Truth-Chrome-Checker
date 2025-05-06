@@ -17,7 +17,7 @@ O **TCC - Truth Chrome Checker** é uma extensão de navegador que permite aos u
 ## Como Usar
 1. Clone este repositório:
    ```bash
-   git clone https://github.com/seuusuario/truth-chrome-checker.git
+   git clone https://github.com/lucas-twygz/truth-chrome-checker.git
    ```
 2. Navegue até o diretório do projeto:
    ```bash
