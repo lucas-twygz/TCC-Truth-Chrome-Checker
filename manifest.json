@@ -5,7 +5,9 @@
     "description": "Captura o conteúdo de uma página de noticias, analisa e estima a probabilidade de serem falsas usando a API do Gemini.",
     "permissions": [
         "activeTab",
-        "storage"
+        "storage",
+        "scripting",
+        "tabs"
     ],
     "host_permissions": [
         "http://localhost:3000/*"
@@ -30,6 +32,6 @@
         }
     },
     "content_security_policy": {
-        "extension_pages": "script-src 'self' http://localhost:3000; object-src 'self'"
+        "extension_pages": "default-src 'self'; script-src  'self'; connect-src 'self' http://localhost:3000; object-src 'self'"
     }
 }
