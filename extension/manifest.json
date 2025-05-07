@@ -16,17 +16,17 @@
                 "<all_urls>"
             ],
             "js": [
-                "readability.js",
-                "content.js"
+                "extension/lib/readability.js",
+                "extension/content/content.js"
             ]
         }
     ],
     "action": {
-        "default_popup": "index.html",
+        "default_popup": "extension/popup/popup.html",
         "default_icon": {
-            "16": "icon.png",
-            "48": "icon.png",
-            "128": "icon.png"
+            "16": "extension/assets/icon.png",
+            "48": "extension/assets/icon.png",
+            "128": "extension/assets/icon.png"
         }
     },
     "content_security_policy": {

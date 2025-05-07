@@ -37,13 +37,15 @@ O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornec
    npm install
    ```
 4. Configure a variável de ambiente para a API Key:
-   - Crie um arquivo `.env` na raiz do projeto e adicione:
+   - Crie um arquivo `.env` na pasta raiz do projeto e adicione:
      ```env
      API_KEY=SUA_CHAVE_AQUI
      ```
 5. Inicie o servidor backend:
    ```bash
-   node server.js
+   npm start
+   ou
+   node extension/server/server.js
    ```
 6. Carregue a extensão no Chrome:
    - Acesse `chrome://extensions/`
@@ -55,15 +57,36 @@ O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornec
 ## Estrutura do Projeto
 
 ```
-├── manifest.json          # Configuração da extensão do Chrome
-├── index.html             # Interface do usuário
-├── style.css              # Estilização da interface
-├── popup.js               # Lógica de frontend para interação
-├── server.js              # Servidor Node.js para processar a análise
-├── package.json           # Dependências do projeto
-├── .env                   # Configuração da chave da API
-├── captured_pages/        # Pasta onde os arquivos de scraping são armazenados
-├── README.md              # Documentação do projeto
+TCC-TRUTH-CHROME-CHECKER/
+├── extension/                   # Tudo relacionado à extensão do Chrome
+│   ├── assets/                  # Imagens e ícones
+│   │   └── icon.png
+│   ├── content/                 # Scripts injetados para scraping
+│   │   └── content.js
+│   ├── lib/                     # Bibliotecas auxiliares
+│   │   └── readability.js
+│   ├── popup/                   # Frontend do popup
+│   │   ├── popup.html
+│   │   ├── popup.js
+│   │   └── style.css
+│   └── manifest.json            # Configuração da extensão do Chrome
+│
+├── server/                      # Backend do projeto (API, scraping, análise)
+│   ├── captured_pages/          # Páginas capturadas pelo Puppeteer
+│   ├── server.js                # Servidor Express (Node.js)
+│   └── teste_api.js             # Teste de conexão com GoogleGenerativeAI
+│
+├── teste_noticia/               # Testes de páginas HTML para scraping
+│   ├── noticia_falsa.html
+│   └── noticia_verdadeira.html
+│
+├── node_modules/                # Dependências do Node.js
+│
+├── package.json                 # Configurações do Node.js e scripts
+├── package-lock.json            # Lock das versões das dependências
+├── .gitignore                   # Arquivos ignorados pelo Git
+├── .env                         # Variáveis de ambiente (API keys)
+└── README.md                    # Documentação do projeto
 ```
 
 ## Configuração da API
