@@ -6,6 +6,8 @@ const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const hoje = new Date();
+console.log(hoje);
 
 const app = express();
 const PORT = 3000;
@@ -43,10 +45,13 @@ app.post("/scrape", async (req, res) => {
         Você é um especialista em checagem de fatos. Sua função é analisar notícias e determinar a probabilidade de serem falsas.
         voce irá receber o conteudo absoluto da página, faça uma filtragem para saber qual é o conteudo real da noticia e não outras noticias paralelas, sempre diga o titulo da noticia.
 
-        - analise ser somente ser 240 caracteres
+        - busque a internet para verificar as noticias
+        - a data atualizada  de hoje é "${hoje}".
+        - analise ser somente até 240 caracteres
         - não utilize caracteres especiais
-        - Dê uma porcentagem estimada de chance de ser falso.
-
+        - Dê uma porcentagem estimada de chance de ser falso. Se a chance estimada for mais de "92%" arredonde para 100%.
+        - Se o texto extraido não for uma noticia retorne o seguinte texto: "Insira uma página válida, por favor."
+        - Explique por que o por que da noticia ser falsa ou verdadeira.
         - Leia atentamente o seguinte texto extraído da página:
         "${pageContent.substring(0, 1000)}"
         `;
