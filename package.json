@@ -8,7 +8,7 @@
     "puppeteer": "^24.4.0"
   },
   "scripts": {
-    "start": "node extension/server/server.js"
+    "start": "node server.js"
   },
   "name": "tcc",
   "version": "1.0.0",
