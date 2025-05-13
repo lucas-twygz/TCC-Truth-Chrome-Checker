@@ -1,12 +1,14 @@
 {
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
+    "@mozilla/readability": "^0.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "puppeteer": "^24.4.0"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node extension/server/server.js"
   },
   "name": "tcc",
   "version": "1.0.0",
