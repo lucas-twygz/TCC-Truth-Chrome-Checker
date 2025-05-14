@@ -1,4 +1,5 @@
 require("dotenv").config();
+const { collectExternalEvidence } = require("./googleNewsSearch");
 
 const express = require("express");
 const cors = require("cors");
@@ -25,45 +26,67 @@ if (!fs.existsSync(SAVE_DIR)) {
 }
 
 app.post("/scrape", async (req, res) => {
-    const { url } = req.body;
-    if (!url) {
-        return res.status(400).json({ error: "Nenhuma URL foi fornecida." });
+    const { url, content: originalContent } = req.body;
+
+    if (!url || !originalContent) {
+        return res.status(400).json({ error: "URL ou conteúdo ausente." });
     }
 
-    const browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
-
+    const titleLine = originalContent.split("\n")[0].trim();
+    let externalEvidence = [];
     try {
-        await page.goto(url, { waitUntil: "domcontentloaded" });
-        const pageContent = await page.evaluate(() => document.body.innerText);
-        await browser.close();
+        externalEvidence = await collectExternalEvidence(titleLine);
+    } catch (err) {
+        console.error("Erro ao consultar Google CSE:", err.message);
+    }
 
-        const filePath = path.join(SAVE_DIR, `pagina_capturada_${Date.now()}.txt`);
-        fs.writeFileSync(filePath, pageContent, "utf8");
+    const evidenceText = externalEvidence.length
+        ? externalEvidence.map(e => {
+            const confiavel = e.isTrusted ? "[FONTE CONFIÁVEL]" : "[OUTRA FONTE]";
+            return `${confiavel}\nTítulo: ${e.title}\nLink: ${e.link}\nResumo: ${e.snippet}`;
+        }).join("\n\n")
+        : "Nenhuma fonte foi localizada.";
 
-        const analysisPrompt = `
+
+    const analysisPrompt = `
         Você é um especialista em checagem de fatos. Sua função é analisar notícias e determinar a probabilidade de serem falsas.
         voce irá receber o conteudo absoluto da página, faça uma filtragem para saber qual é o conteudo real da noticia e não outras noticias paralelas, sempre diga o titulo da noticia.
 
-        - busque a internet para verificar as noticias
-        - a data atualizada  de hoje é "${hoje}".
-        - analise ser somente até 240 caracteres
+        - A data atualizada de hoje é "${hoje}" guarde a data para si. Não cite a data a menos que seja realmente relevante. Se for uma noticia de uma data antiga voce ainda deve verificar a veracidade.
+        - Analise ser somente até 240 caracteres
+        - Dê uma porcentagem estimada de chance de ser falso. Se a chance estimada for mais de "95%" arredonde para 100%.
+        - Se o texto extraído não for uma notícia retorne: "Insira uma página válida, por favor."
+        - Explique o porquê da notícia ser falsa ou verdadeira.
         - não utilize caracteres especiais
-        - Dê uma porcentagem estimada de chance de ser falso. Se a chance estimada for mais de "92%" arredonde para 100%.
-        - Se o texto extraido não for uma noticia retorne o seguinte texto: "Insira uma página válida, por favor."
-        - Explique por que o por que da noticia ser falsa ou verdadeira.
-        - Leia atentamente o seguinte texto extraído da página:
-        "${pageContent.substring(0, 1000)}"
-        `;
 
+        Notícia original:
+        "${originalContent.substring(0, 1000)}"
+
+        Fontes externas para comparação:
+        ${evidenceText}
+    `;
+
+    const payloadParaGemini = {
+        url,
+        originalContent,
+        externalEvidence,
+        prompt: analysisPrompt
+    };
+
+    const SAVE_DIR = path.join(__dirname, "captured_pages");
+    const jsonPath = path.join(SAVE_DIR, `gemini_payload_${Date.now()}.json`);
+    fs.writeFileSync(jsonPath, JSON.stringify(payloadParaGemini, null, 2), "utf8");
+
+    try {
         const result = await model.generateContent(analysisPrompt);
         const responseText = result.response.text();
-        res.json({ response: responseText, savedFile: filePath });
+        res.json({ response: responseText, savedFile: jsonPath });
     } catch (error) {
-        console.error("Erro ao processar scraping:", error);
-        res.status(500).json({ error: "Erro ao capturar conteúdo da página." });
+        console.error("Erro ao gerar resposta do Gemini:", error);
+        res.status(500).json({ error: "Erro ao gerar análise com Gemini." });
     }
 });
+
 
 app.listen(PORT, () => {
     console.log(`Servidor rodando em http://localhost:${PORT}`);

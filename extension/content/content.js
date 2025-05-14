@@ -10,7 +10,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const articleBody = document.createElement("div");
     articleBody.innerHTML = doc.content;
 
-    // Remover elementos indesejados dentro da notícia
+    // 🔍 Filtros mais agressivos para remover seções fora da notícia principal
     const selectorsToRemove = [
       "figure",
       "video",
@@ -18,23 +18,34 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       "script",
       "style",
       "footer",
-      ".autor",         // autores
-      ".creditos",      // créditos da imagem ou matéria
-      ".tags",          // tags como "STF", "Lula", etc.
-      ".relacionadas",  // matérias relacionadas
-      ".mais-lidas",    // lista de mais lidas
-      ".midia-wrapper", // vídeos do G1
-      ".vjs-player",    // players de vídeo
-      ".banner",        // banners publicitários
-      ".companions",    // elementos laterais
+      "nav",
+      "header",
+      "aside",
+      "form",
+      ".autor", ".creditos", ".tags", ".relacionadas",
+      ".mais-lidas", ".midia-wrapper", ".vjs-player",
+      ".banner", ".companions", ".share", ".sidebar",
+      ".navegacao", ".breadcrumb", ".menu", ".header",
+      ".footer", ".social", ".recommendations", ".leia",
+      ".publicidade", ".ads", ".anuncio", ".widget",
+      ".news-tabs", ".ultimas", ".ultimos", ".recomendado",
+      ".barra-superior", ".barra-inferior", ".content-tools"
     ];
 
     selectorsToRemove.forEach(selector => {
       articleBody.querySelectorAll(selector).forEach(el => el.remove());
     });
 
-    // Extrair o texto limpo
-    const cleanText = articleBody.textContent.trim();
+    // 🧽 Remove elementos repetidos (por exemplo: "Leia também" em parágrafos)
+    articleBody.querySelectorAll("p").forEach(p => {
+      if (p.textContent.trim().length < 30) p.remove();
+    });
+
+    // 🧹 Texto final limpo
+    const cleanText = articleBody.textContent
+      .replace(/\\s+/g, " ")
+      .replace(/\\n{2,}/g, "\\n")
+      .trim();
 
     sendResponse({ article: `${doc.title}\n\n${cleanText}` });
   }
