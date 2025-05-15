@@ -41,7 +41,8 @@ async function searchNews(title, num = 10) {
     }));
 }
 
-export async function collectExternalEvidence(originalTitle) {
+// Função principal
+async function collectExternalEvidence(originalTitle) {
     const results = await searchNews(originalTitle);
 
     // 🎯 Filtro por fontes confiáveis e similaridade
@@ -57,6 +58,11 @@ export async function collectExternalEvidence(originalTitle) {
         return trusted;
     }
 
-    // 🔁 Se não achou confiáveis, retorna os 2 primeiros mais relevantes (com aviso, se quiser)
+    // 🔁 Se não achou confiáveis, retorna os 2 primeiros mais relevantes
     return results.slice(0, 2);
 }
+
+// Exportando com CommonJS
+module.exports = {
+    collectExternalEvidence
+};
