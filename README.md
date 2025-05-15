@@ -1,26 +1,24 @@
-9# TCC - Truth Chrome Checker
-
 ## Descrição
 
-O **TCC - Truth Chrome Checker** é uma extensão de navegador que permite aos usuários analisar a veracidade de uma notícia com um clique. A extensão pode capturar automaticamente o conteúdo da página que o usuário está visitando com um clique de botão, utilizando **web scraping** com Puppeteer.
+O **TCC - Truth Chrome Checker** é uma extensão de navegador que permite aos usuários analisar a veracidade de uma notícia com um clique. A extensão pode capturar automaticamente o conteúdo da página que o usuário está visitando com um clique de botão, utilizando **web scraping** com Puppeteer, Readability, Google CSE e parâmetros baseados em IA.
 
 O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornecer um retorno baseado em padrões de desinformação.
 
 ## Funcionalidades
 
-- Permite que o usuário insira uma notícia para análise.
-- **Nova função:** Captura automaticamente o conteúdo da página atual.
+- Captura automaticamente o conteúdo da página atual.
+- Busca automática em tempo real por fontes na internet para cálculo de veracidade.
 - Usa a API do **Google Gemini** para processar e avaliar a veracidade da notícia.
 - Retorna uma estimativa em porcentagem da probabilidade de a notícia ser falsa.
 - Fornece uma justificativa concisa para a avaliação.
-- **Nova função:** Salva o conteúdo das páginas analisadas em arquivos `.txt` para referência posterior.
+- Salva o conteúdo das páginas analisadas em arquivos `.json` para referência posterior e debugging.
 
 ## Tecnologias Utilizadas
 
-- **Frontend:** HTML, CSS, JavaScript
+- **Frontend:** HTML5, CSS3, JavaScript
 - **Backend:** Node.js com Express
-- **Scraping:** Puppeteer
-- **API de Inteligência Artificial:** Google Gemini
+- **Scraping:** Puppeteer, Readibility, Google CSE.
+- **API de Inteligência Artificial:** Google Gemini 2.0 Flash
 
 ## Como Usar
 
@@ -72,7 +70,8 @@ TCC-TRUTH-CHROME-CHECKER/
 │   └── manifest.json            # Configuração da extensão do Chrome
 │
 ├── server/                      # Backend do projeto (API, scraping, análise)
-│   ├── captured_pages/          # Páginas capturadas pelo Puppeteer
+|   ├── captured_pages/          # Páginas capturadas pelo Puppeteer
+│   ├── googleNewsSearch.js/     # Busca notícias, filtra fontes confiáveis e compara títulos das notícias.
 │   ├── server.js                # Servidor Express (Node.js)
 │   └── teste_api.js             # Teste de conexão com GoogleGenerativeAI
 │
@@ -95,7 +94,6 @@ Antes de iniciar o projeto, é necessário configurar a chave da API do **Google
 
 ## Melhorias Futuras
 
-- Implementar análise baseada em busca na internet.
 - Melhorar a interface com gráficos de confiabilidade.
 - Criar um banco de dados para armazenar notícias analisadas para otimização.
 - Mudança de foco com base na analíse da vericidade de posts no **X**.
