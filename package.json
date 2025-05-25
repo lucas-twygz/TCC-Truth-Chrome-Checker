@@ -1,6 +1,7 @@
 {
   "dependencies": {
-    "@google/generative-ai": "^0.24.0",
+    "@google/genai": "^1.0.1",
+    "@google/generative-ai": "^0.24.1",
     "@mozilla/readability": "^0.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -11,6 +12,7 @@
     "start": "node extension/server/server.js"
   },
   "name": "tcc",
+  "type": "module",
   "version": "1.0.0",
   "main": "server.js",
   "keywords": [],
