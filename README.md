@@ -1,6 +1,6 @@
 ## Descrição
 
-O **TCC - Truth Chrome Checker** é uma extensão de navegador que permite aos usuários analisar a veracidade de uma notícia com um clique. A extensão pode capturar automaticamente o conteúdo da página que o usuário está visitando com um clique de botão, utilizando **web scraping** com Puppeteer, Readability, Google CSE e parâmetros baseados em IA.
+O **TCC - Truth Chrome Checker** é uma extensão para navegadores **Chromium** que permite aos usuários analisar a veracidade de uma notícia com um clique. A extensão pode capturar automaticamente o conteúdo da página que o usuário está visitando com um clique de botão, utilizando **web scraping** com Puppeteer, Readability, Google CSE e parâmetros baseados em IA.
 
 O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornecer um retorno baseado em padrões de desinformação.
 
