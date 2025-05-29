@@ -10,7 +10,7 @@ const TRUSTED_SOURCES = [
 ];
 
 function bigrams(str) {
-    if (!str) return new Set(); // Adicionado para segurança
+    if (!str) return new Set();
     const s = str.toLowerCase().replace(/[^\w\s]/g, "").split(/\s+/).join(" ");
     const bg = new Set();
     for (let i = 0; i < s.length - 1; i++) {
@@ -20,10 +20,10 @@ function bigrams(str) {
 }
 
 function similarity(a, b) {
-    if (!a || !b) return 0; // Adicionado para segurança
+    if (!a || !b) return 0;
     const A = bigrams(a);
     const B = bigrams(b);
-    if (A.size + B.size === 0) return 0; // Evita divisão por zero
+    if (A.size + B.size === 0) return 0;
     const intersection = [...A].filter(x => B.has(x)).length;
     return (2 * intersection) / (A.size + B.size);
 }

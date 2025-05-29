@@ -1,5 +1,3 @@
-// popup.js
-
 document.addEventListener("DOMContentLoaded", function () {
     const scrapeButton = document.getElementById("scrapeButton");
     if (scrapeButton) {
@@ -7,7 +5,6 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
         console.error("Botão 'scrapeButton' não encontrado no DOM.");
     }
-    // Inicializa o estado da UI ao carregar o popup
     resetUIState();
 });
 
@@ -21,7 +18,7 @@ function resetUIState() {
         gaugeBar.style.backgroundColor = '#e0e0e0';
     }
     if (percentageTextElement) {
-        percentageTextElement.textContent = '--% Falso'; 
+        percentageTextElement.textContent = '--% Verificando'; 
         percentageTextElement.style.color = '#333';
     }
     if (analysisResultTextElement) {
@@ -34,13 +31,12 @@ async function scrapePage() {
     const percentageTextElement = document.getElementById('percentageText');
     const analysisResultTextElement = document.getElementById('analysisResultText');
 
-    // Estado inicial enquanto carrega a análise
     if (gaugeBar) {
         gaugeBar.style.width = '0%'; 
         gaugeBar.style.backgroundColor = '#e0e0e0'; 
     }
     if (percentageTextElement) {
-        percentageTextElement.textContent = 'Analisando...'; // Mantém "Analisando..." sem a %
+        percentageTextElement.textContent = 'Analisando...'; 
         percentageTextElement.style.color = '#333'; 
     }
     if (analysisResultTextElement) {
@@ -94,7 +90,6 @@ async function scrapePage() {
                     const data = await res.json();
                     const responseTextFromServer = data.response; 
                 
-
                     if (!responseTextFromServer) {
                         if (percentageTextElement) percentageTextElement.textContent = 'Sem Resposta';
                         if (analysisResultTextElement) analysisResultTextElement.textContent = "O servidor não retornou uma análise.";
@@ -110,13 +105,12 @@ async function scrapePage() {
                     if (percentage !== null) {
                         if (gaugeBar) {
                             gaugeBar.style.width = percentage + '%';
-                            const hue = 120 * (1 - (percentage / 100)); 
+                            const hue = (percentage / 100) * 120;
                             gaugeBar.style.backgroundColor = `hsl(${hue}, 70%, 50%)`;
                         }
                         if (percentageTextElement) {
-                            // MODIFICAÇÃO PRINCIPAL AQUI:
-                            percentageTextElement.textContent = "Probabilidade de ser falso: " + percentage + '% Falso'; 
-                            const hueText = 120 * (1 - (percentage / 100));
+                            percentageTextElement.textContent = `Probabilidade de ser verdadeiro: ${percentage}% Verdadeiro`; 
+                            const hueText = (percentage / 100) * 120;
                             percentageTextElement.style.color = `hsl(${hueText}, 70%, 35%)`;
                         }
                     } else {
@@ -132,7 +126,7 @@ async function scrapePage() {
 
                     let cleanedResponseText = responseTextFromServer;
                     if (percentage !== null) {
-                        const regexPattern = new RegExp(`^(Nova chance de ser falso:|Chance de ser falso:)\\s*${percentage}%\\s*`, "i");
+                        const regexPattern = new RegExp(`^(Chance de ser verdadeiro:|Probabilidade de ser verdadeiro:)\\s*${percentage}%\\s*`, "i");
                         cleanedResponseText = responseTextFromServer.replace(regexPattern, '').trim();
                         
                         if (cleanedResponseText === "" && responseTextFromServer.includes(percentage + '%')) {

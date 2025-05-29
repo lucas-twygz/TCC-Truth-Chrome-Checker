@@ -20,13 +20,12 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
 const SAVE_DIR = path.join(__dirname, "captured_pages");
 if (!fs.existsSync(SAVE_DIR)) fs.mkdirSync(SAVE_DIR);
 
-const SUBFOLDERS = ["initial", "high_false_chance", "low_false_chance"];
+const SUBFOLDERS = ["initial", "low_truth_chance", "high_truth_chance"];
 for (const folder of SUBFOLDERS) {
     const subPath = path.join(SAVE_DIR, folder);
     if (!fs.existsSync(subPath)) fs.mkdirSync(subPath);
 }
 
-// Função auxiliar para extrair a porcentagem da resposta do Gemini
 function extractChanceOfFalse(responseText) {
     if (!responseText) return null;
     const chanceMatch = responseText.match(/(\d+)\s*%/);
@@ -36,7 +35,6 @@ function extractChanceOfFalse(responseText) {
     return null;
 }
 
-// Insira esta função após a função extractChanceOfFalse
 function getFormattedTimestamp() {
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
@@ -44,7 +42,7 @@ function getFormattedTimestamp() {
     const year = now.getFullYear();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
-    // Segundos:
+    // para segundos:
     // const seconds = String(now.getSeconds()).padStart(2, '0');
     // return `${day}-${month}-${year}-${hours}_${minutes}_${seconds}`;
 
@@ -75,12 +73,12 @@ app.post("/scrape", async (req, res) => {
         : "Nenhuma fonte externa inicial foi localizada.";
 
     const firstAnalysisPrompt = `
-Você é um especialista em checagem de fatos. Sua função é analisar notícias e determinar a probabilidade de serem falsas.
-Você irá receber o conteúdo da página. Identifique o título da notícia ao iniciar sua análise.
+Você é um especialista em checagem de fatos. Sua função é analisar notícias e determinar a probabilidade de serem verdadeiras.
+Você irá receber o conteúdo da página.
 
 - A data atual é "${currentDate}". Considere seu conhecimento limitado sobre eventos muito recentes.
 - Sua análise deve ter no máximo 240 caracteres.
-- Dê uma porcentagem estimada de chance de ser falso. Se for mais de 95%, arredonde para 100%. (Ex: "Chance de ser falso: 70%")
+- Dê uma porcentagem estimada de chance de ser verdadeiro. Se for mais de 95%, arredonde para 100%. (Ex: "Chance de ser verdadeiro: 70%")
 - Se o texto extraído claramente não for uma notícia, retorne: "Insira uma página de notícia válida, por favor."
 - Explique o porquê da notícia ser considerada falsa ou verdadeira.
 - Não utilize caracteres especiais não usuais.
@@ -106,10 +104,10 @@ ${initialEvidenceText}
         const chance = extractChanceOfFalse(firstResponseText);
         console.log("Chance extraída:", chance);
 
-        if (chance !== null && chance >= 60) {
-            console.log(`Chance >= 60 (${chance}%). Iniciando segunda etapa para identificar incongruência.`);
+        if (chance !== null && chance <= 40) {
+            console.log(`Chance <= 40 (${chance}%). Iniciando segunda etapa para identificar incongruência.`);
             const getIncongruityPrompt = `
-A análise anterior da notícia abaixo indicou uma probabilidade de ${chance}% de ser falsa.
+A análise anterior da notícia abaixo indicou uma probabilidade de ${chance}% de ser verdadeira.
 Notícia Original:
 "${originalContent.substring(0, 1000)}"
 
@@ -117,8 +115,7 @@ Por favor, identifique e retorne APENAS o principal fato, alegação ou termo es
 Se a suspeita for geral ou não houver um termo específico pesquisável, retorne "N/A".
             `;
             
-            // Salva o prompt para obter a incongruência
-            const incongruityPromptFilePath = path.join(SAVE_DIR, "high_false_chance", `gemini_payload_incongruity_prompt_${getFormattedTimestamp()}.json`);
+            const incongruityPromptFilePath = path.join(SAVE_DIR, "low_truth_chance", `gemini_payload_incongruity_prompt_${getFormattedTimestamp()}.json`);
             fs.writeFileSync(incongruityPromptFilePath, JSON.stringify({ prompt: getIncongruityPrompt }, null, 2), "utf8");
             
             console.log("Solicitando termo de incongruência ao Gemini...");
@@ -145,7 +142,7 @@ Se a suspeita for geral ou não houver um termo específico pesquisável, retorn
 
                 const reAnalysisPrompt = `
 REAVALIAÇÃO DE NOTÍCIA.
-Uma análise inicial desta notícia indicou ${chance}% de chance de ser falsa.
+Uma análise inicial desta notícia indicou ${chance}% de chance de ser verdadeiro.
 Foi identificado o seguinte ponto para investigação adicional: "${searchableIncongruity}".
 Uma nova busca foi realizada sobre este ponto.
 
@@ -154,7 +151,7 @@ Sua tarefa é REAVALIAR a notícia original considerando TODAS as fontes de evid
 DIRETRIZES PARA SUA ANALISE:
 - A data atual é "${currentDate}". Considere seu conhecimento limitado sobre eventos muito recentes.
 - Sua análise deve ter no máximo 240 caracteres.
-- Dê uma NOVA porcentagem estimada de chance de ser falso. Se for mais de 95%, arredonde para 100%. (Ex: "Nova chance de ser falso: 30%")
+- Dê uma NOVA porcentagem estimada de chance de ser verdadeiro. Se for mais de 95%, arredonde para 100%. (Ex: "Nova chance de ser verdadeiro: 30%")
 - Explique o porquê da notícia ser considerada falsa ou verdadeira, AGORA considerando TODAS as evidências.
 - Foque em como a investigação do ponto "${searchableIncongruity}" afetou a análise.
 
@@ -171,7 +168,7 @@ Com base em TUDO isso, sua nova análise concisa e porcentagem:
                 `;
                 
                 // savedFilePath é atualizado AQUI, antes de salvar o payload da reanálise.
-                savedFilePath = path.join(SAVE_DIR, "high_false_chance", `gemini_payload_reanalysis_${getFormattedTimestamp()}.json`);
+                savedFilePath = path.join(SAVE_DIR, "low_truth_chance", `gemini_payload_reanalysis_${getFormattedTimestamp()}.json`);
                 fs.writeFileSync(savedFilePath, JSON.stringify({ url, originalContent, initialExternalEvidence, incongruityEvidenceResults, prompt: reAnalysisPrompt }, null, 2), "utf8");
 
                 console.log("Realizando reanálise com Gemini...");
@@ -180,14 +177,14 @@ Com base em TUDO isso, sua nova análise concisa e porcentagem:
                 console.log("RAW Resposta da reanálise:", JSON.stringify(finalResponseText));
             } else { // Este é o else do if (searchableIncongruity.toLowerCase() !== "n/a" ...)
                 console.log("Nenhum termo de incongruência pesquisável retornado ou N/A. Usando a primeira análise com ressalva.");
-                finalResponseText = `Análise inicial indicou ${chance}% de chance de ser falsa, mas não foi possível identificar um ponto específico para nova busca. Resposta inicial: ${firstResponseText}`;
+                finalResponseText = `Análise inicial indicou ${chance}% de chance de ser verdadeira, mas não foi possível identificar um ponto específico para nova busca. Resposta inicial: ${firstResponseText}`;
                 // savedFilePath permanece o 'initial' já que estamos usando firstResponseText
             }
         } 
-        else if (chance !== null && chance <= 10) { 
-            console.log(`Chance <= 10 (${chance}%). Iniciando etapa para buscar confirmação do fato mais verdadeiro.`);
+        else if (chance !== null && chance <= 90) { 
+            console.log(`Chance >= 90 (${chance}%). Iniciando etapa para buscar confirmação do fato mais verdadeiro.`);
             const getTruestFactPrompt = `
-A análise anterior da notícia abaixo indicou uma probabilidade muito baixa (${chance}%) de ser falsa, sugerindo que é provavelmente verdadeira.
+A análise anterior da notícia abaixo indicou uma probabilidade muito alta (${chance}%) de ser verdadeira, sugerindo que é provavelmente falso.
 Notícia Original:
 "${originalContent.substring(0, 1000)}"
 
@@ -197,8 +194,7 @@ Exemplo de noticia "O papa está vivo e bem"
 Exemplo de retorno "O papa morreu?"
             `;
             
-            const truestFactPromptFilePath = path.join(SAVE_DIR, "low_false_chance", `gemini_payload_truestfact_prompt_${getFormattedTimestamp()}.json`);
-            // Descomentei a linha abaixo para salvar o prompt do "fato mais verdadeiro", como nos outros casos
+            const truestFactPromptFilePath = path.join(SAVE_DIR, "high_truth_chance", `gemini_payload_truestfact_prompt_${getFormattedTimestamp()}.json`);
             fs.writeFileSync(truestFactPromptFilePath, JSON.stringify({ prompt: getTruestFactPrompt }, null, 2), "utf8");
 
             console.log("Solicitando termo do fato mais verdadeiro ao Gemini...");
@@ -225,7 +221,7 @@ Exemplo de retorno "O papa morreu?"
 
                 const reConfirmationPrompt = `
 RECONFIRMAÇÃO DE NOTÍCIA.
-Uma análise inicial desta notícia indicou uma baixa probabilidade (${chance}%) de ser falsa, sugerindo ser verdadeira.
+Uma análise inicial desta notícia indicou uma baixa probabilidade (${chance}%) de ser verdadeira, sugerindo ser verdadeira.
 Foi identificado o seguinte fato central para busca de mais confirmação: "${searchableTruestFact}".
 Uma nova busca foi realizada sobre este ponto.
 
@@ -236,7 +232,7 @@ O objetivo é confirmar ou refinar a análise inicial.
 - Considere seu conhecimento limitado sobre eventos muito recentes.
 
 DIRETRIZES PARA SUA REAVALIAÇÃO (máximo 240 caracteres):
-1. Dê uma NOVA porcentagem estimada de chance de ser falso (deve permanecer baixa, idealmente 0% a ${chance}%, se a confirmação for forte). (Ex: "Nova chance de ser falso: 5%")
+1. Dê uma NOVA porcentagem estimada de chance de ser verdadeiro (deve permanecer baixa, idealmente 0% a ${chance}%, se a confirmação for forte). (Ex: "Nova chance de ser verdadeiro: 5%")
 2. Explique brevemente como a evidência adicional sobre "${searchableTruestFact}" suporta ou reforça a veracidade da notícia. Se a evidência adicional não for conclusiva ou não mudar a análise, apenas reitere a confiança.
 
 Notícia original:
@@ -251,7 +247,7 @@ ${truestFactEvidenceText}
 Com base em TUDO isso, sua nova análise concisa e porcentagem:
                 `;
                 
-                savedFilePath = path.join(SAVE_DIR, "low_false_chance", `gemini_payload_reconfirmation_${getFormattedTimestamp()}.json`);
+                savedFilePath = path.join(SAVE_DIR, "high_truth_chance", `gemini_payload_reconfirmation_${getFormattedTimestamp()}.json`);
                 fs.writeFileSync(savedFilePath, JSON.stringify({ url, originalContent, initialExternalEvidence, truestFactEvidenceResults, prompt: reConfirmationPrompt }, null, 2), "utf8");
                 
                 console.log("Realizando reanálise de confirmação com Gemini...");
@@ -261,17 +257,15 @@ Com base em TUDO isso, sua nova análise concisa e porcentagem:
             } else {
                 console.log("Nenhum termo de fato mais verdadeiro pesquisável retornado ou N/A. Usando a primeira análise.");
                 finalResponseText = firstResponseText; 
-                // savedFilePath permanece o 'initial'
             }
         } 
-        else { // Casos onde chance é null, ou >= 10 e < 60
+        else {
             if (chance === null) {
                 console.log("Chance não pôde ser extraída. Usando a primeira análise.");
             } else {
                 console.log(`Chance entre 10% e 59% (${chance}%). Usando a primeira análise.`);
             }
             finalResponseText = firstResponseText;
-            // savedFilePath permanece o 'initial'
         }
         
         // Limpeza do finalResponseText para remover ponto inicial ou espaços extras
