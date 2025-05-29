@@ -9,7 +9,7 @@ O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornec
 - Captura automaticamente o conteúdo da página atual.
 - Busca automática em tempo real por fontes na internet para cálculo de veracidade.
 - Usa a API do **Google Gemini** para processar e avaliar a veracidade da notícia.
-- Retorna uma estimativa em porcentagem da probabilidade de a notícia ser falsa.
+- Retorna uma estimativa em porcentagem da probabilidade de a notícia ser verdadeira.
 - Fornece uma justificativa concisa para a avaliação.
 - Salva o conteúdo das páginas analisadas em arquivos `.json` para referência posterior e debugging.
 
@@ -34,10 +34,12 @@ O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornec
    ```bash
    npm install
    ```
-4. Configure a variável de ambiente para a API Key:
+4. Configure a variável de ambiente para as API Key:
    - Crie um arquivo `.env` na pasta raiz do projeto e adicione:
      ```env
      API_KEY=SUA_CHAVE_AQUI
+     GOOGLE_API_KEY=SUA_CHAVE_AQUI
+     GOOGLE_CSE_ID=SUA_CHAVE_AQUI
      ```
 5. Inicie o servidor backend:
    ```bash
@@ -50,6 +52,7 @@ O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornec
    - Ative o `Modo de desenvolvedor`
    - Clique em `Carregar sem compactação`
    - Selecione a pasta do projeto
+   
 7. Para análise automática, clique no botão de captura para que a extensão extraia o conteúdo da página e o analise automaticamente.
 
 ## Estrutura do Projeto

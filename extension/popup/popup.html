@@ -3,15 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TCC - True Chrome Checker</title>
+    <title>True Chrome Checker</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <h1>TCC - True Chrome Checker</h1>
+        <h1>Truth Chrome Checker</h1>
         <button id="scrapeButton">Analisar Página Atual</button>
-        <p id="result"></p>
-    </div>
+        
+        <div class="gauge-container">
+            <div class="gauge-bar-track">
+                <div id="gaugeBar" class="gauge-bar-fill"></div>
+            </div>
+            <p id="percentageText" class="percentage-text">--% Falso</p>
+        </div>
+        
+        <p id="analysisResultText" class="analysis-result-text"></p>
+
+        <footer class="popup-footer">
+            <h2>Equipe:</h2>
+            <p>Lucas Melo de Souza - 2214628</p>
+            <p>Lucas de Matos Oliveira - 2214646</p>
+            <p>Antonio Alves Araújo - 2216961</p>
+        </footer>
+        </div>
 
     <script src="./popup.js"></script>
 </body>
