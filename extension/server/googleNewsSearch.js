@@ -30,8 +30,6 @@ function similarity(a, b) {
 
 async function searchNews(title, num = 10) {
     const query = encodeURIComponent(title);
-    // Adicionado &sort=date para priorizar resultados recentes, conforme discutido anteriormente.
-    // Se não quiser, pode remover o &sort=date.
     const endpoint = `https://customsearch.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${GOOGLE_CSE_ID}&num=${num}&q=${query}&sort=date`;
 
     const res = await fetch(endpoint);
@@ -48,7 +46,6 @@ async function searchNews(title, num = 10) {
 async function collectExternalEvidence(originalTitle) {
     const rawResults = await searchNews(originalTitle);
 
-    // Processa os resultados para adicionar a flag isTrusted
     const resultsWithTrustFlag = rawResults.map(r => {
         let isTrustedSource = false;
         try {
@@ -56,23 +53,18 @@ async function collectExternalEvidence(originalTitle) {
             isTrustedSource = TRUSTED_SOURCES.some(source => domain.includes(source));
         } catch (e) {
             console.warn("URL inválida em collectExternalEvidence:", r.link, e.message);
-            // ignora URLs malformadas, isTrustedSource permanece false
         }
         return { ...r, isTrusted: isTrustedSource }; // Adiciona a flag isTrusted
     });
 
     const trustedAndSimilar = resultsWithTrustFlag.filter(r => {
         const isSimilar = similarity(r.title, originalTitle) >= 0.2;
-        // r.isTrusted já indica se o domínio é confiável
         return r.isTrusted && isSimilar;
     });
 
     if (trustedAndSimilar.length > 0) {
-        return trustedAndSimilar; // Estes itens terão .isTrusted = true
+        return trustedAndSimilar;
     }
-
-    // Fallback: retorna os 2 primeiros resultados gerais.
-    // A flag .isTrusted deles refletirá o status do seu domínio (pode ser true ou false).
     return resultsWithTrustFlag.slice(0, 2);
 }
 

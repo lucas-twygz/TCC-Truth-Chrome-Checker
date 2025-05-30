@@ -18,7 +18,7 @@ function resetUIState() {
         gaugeBar.style.backgroundColor = '#e0e0e0';
     }
     if (percentageTextElement) {
-        percentageTextElement.textContent = '--% Verificando'; 
+        percentageTextElement.textContent = '--% Verificando';
         percentageTextElement.style.color = '#333';
     }
     if (analysisResultTextElement) {
@@ -105,7 +105,7 @@ async function scrapePage() {
                     if (percentage !== null) {
                         if (gaugeBar) {
                             gaugeBar.style.width = percentage + '%';
-                            const hue = (percentage / 100) * 120;
+                            const hue = (percentage / 100) * 120; 
                             gaugeBar.style.backgroundColor = `hsl(${hue}, 70%, 50%)`;
                         }
                         if (percentageTextElement) {
@@ -119,25 +119,39 @@ async function scrapePage() {
                             gaugeBar.style.backgroundColor = '#e0e0e0';
                         }
                         if (percentageTextElement) {
-                            percentageTextElement.textContent = 'Concluído'; 
+                            percentageTextElement.textContent = 'Análise Concluída'; 
                             percentageTextElement.style.color = '#333';
                         }
                     }
 
                     let cleanedResponseText = responseTextFromServer;
                     if (percentage !== null) {
-                        const regexPattern = new RegExp(`^(Chance de ser verdadeiro:|Probabilidade de ser verdadeiro:)\\s*${percentage}%\\s*`, "i");
-                        cleanedResponseText = responseTextFromServer.replace(regexPattern, '').trim();
-                        
-                        if (cleanedResponseText === "" && responseTextFromServer.includes(percentage + '%')) {
-                           cleanedResponseText = "Análise focada na porcentagem. Detalhes adicionais não fornecidos ou já removidos.";
-                        } else if (cleanedResponseText === "") { 
-                           cleanedResponseText = responseTextFromServer; 
+                        const lines = responseTextFromServer.split('\n');
+                        if (lines.length > 0 && /\d+\s*%/.test(lines[0])) {
+                            cleanedResponseText = lines.slice(1).join('\n').trim();
+
+                            if (cleanedResponseText === "") {
+                                cleanedResponseText = "A análise detalhada está contida na porcentagem acima ou não foram fornecidos detalhes adicionais.";
+                            }
+                        } else {
+                            const genericPercentagePattern = new RegExp(`^(Nova chance de ser verdadeiro:|Chance de ser verdadeiro:|Probabilidade de ser verdadeiro:)\\s*${percentage}%\\s*Verdadeiro\\s*`, "i");
+                            let tempCleaned = responseTextFromServer.replace(genericPercentagePattern, '').trim();
+                            if (tempCleaned !== responseTextFromServer) {
+                                cleanedResponseText = tempCleaned;
+                            }
+                            if (cleanedResponseText === "" && responseTextFromServer.includes(percentage + '%')) {
+                                cleanedResponseText = "Detalhes da análise focados na porcentagem.";
+                            }
                         }
+                    }
+                    if (cleanedResponseText.startsWith(". ")) {
+                        cleanedResponseText = cleanedResponseText.substring(2);
+                    } else if (cleanedResponseText.startsWith(".")) {
+                        cleanedResponseText = cleanedResponseText.substring(1);
                     }
                     
                     if (analysisResultTextElement) {
-                        analysisResultTextElement.textContent = cleanedResponseText;
+                        analysisResultTextElement.textContent = cleanedResponseText.trim(); 
                     }
 
                 } catch (fetchError) {

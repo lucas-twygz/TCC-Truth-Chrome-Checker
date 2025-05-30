@@ -20,13 +20,13 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
 const SAVE_DIR = path.join(__dirname, "captured_pages");
 if (!fs.existsSync(SAVE_DIR)) fs.mkdirSync(SAVE_DIR);
 
-const SUBFOLDERS = ["initial", "low_truth_chance", "high_truth_chance"];
+const SUBFOLDERS = ["initial", "low_truth_chance_investigation", "high_truth_chance_confirmation"];
 for (const folder of SUBFOLDERS) {
     const subPath = path.join(SAVE_DIR, folder);
     if (!fs.existsSync(subPath)) fs.mkdirSync(subPath);
 }
 
-function extractChanceOfFalse(responseText) {
+function extractPercentage(responseText) {
     if (!responseText) return null;
     const chanceMatch = responseText.match(/(\d+)\s*%/);
     if (chanceMatch && chanceMatch[1]) {
@@ -38,15 +38,11 @@ function extractChanceOfFalse(responseText) {
 function getFormattedTimestamp() {
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // getMonth() é 0-indexado
+    const month = String(now.getMonth() + 1).padStart(2, '0');
     const year = now.getFullYear();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
-    // para segundos:
-    // const seconds = String(now.getSeconds()).padStart(2, '0');
-    // return `${day}-${month}-${year}-${hours}_${minutes}_${seconds}`;
-
-    return `${day}-${month}-${year}-${hours}_${minutes}`; // Formato DD-MM-YYYY-HH_MM
+    return `${day}-${month}-${year}-${hours}_${minutes}`;
 }
 
 app.post("/scrape", async (req, res) => {
@@ -73,15 +69,16 @@ app.post("/scrape", async (req, res) => {
         : "Nenhuma fonte externa inicial foi localizada.";
 
     const firstAnalysisPrompt = `
-Você é um especialista em checagem de fatos. Sua função é analisar notícias e determinar a probabilidade de serem verdadeiras.
+Você é um especialista em checagem de fatos. Sua função é analisar notícias e posts de rede social e determinar a probabilidade de serem VERDADEIRAS.
 Você irá receber o conteúdo da página.
 
 - A data atual é "${currentDate}". Considere seu conhecimento limitado sobre eventos muito recentes.
 - Sua análise deve ter no máximo 240 caracteres.
-- Dê uma porcentagem estimada de chance de ser verdadeiro. Se for mais de 95%, arredonde para 100%. (Ex: "Chance de ser verdadeiro: 70%")
+- Dê uma porcentagem estimada de CHANCE DE SER VERDADEIRO. Se for mais de 95%, arredonde para 100%. (Ex: "Chance de ser verdadeiro: 70%")
 - Se o texto extraído claramente não for uma notícia, retorne: "Insira uma página de notícia válida, por favor."
-- Explique o porquê da notícia ser considerada falsa ou verdadeira.
+- Explique o porquê da notícia ser considerada predominantemente falsa ou verdadeira.
 - Não utilize caracteres especiais não usuais.
+- Após a porcentagem, coloque uma quebra de linha antes de iniciar a explicação.
 
 Notícia original (primeiros 1000 caracteres):
 "${originalContent.substring(0, 1000)}"
@@ -101,174 +98,162 @@ ${initialEvidenceText}
         let firstResponseText = firstResult.response.text();
         console.log("RAW Resposta da primeira análise:", JSON.stringify(firstResponseText));
 
-        const chance = extractChanceOfFalse(firstResponseText);
-        console.log("Chance extraída:", chance);
+        const chance = extractPercentage(firstResponseText);
+        console.log("Chance de ser VERDADEIRO extraída:", chance);
 
         if (chance !== null && chance <= 40) {
-            console.log(`Chance <= 40 (${chance}%). Iniciando segunda etapa para identificar incongruência.`);
-            const getIncongruityPrompt = `
-A análise anterior da notícia abaixo indicou uma probabilidade de ${chance}% de ser verdadeira.
+            console.log(`Chance de ser verdadeiro <= 40% (${chance}%). Investigando ponto de suspeita.`);
+            const getSuspicionPointPrompt = `
+A análise anterior desta notícia indicou uma baixa probabilidade (${chance}%) de ser verdadeira, levantando suspeitas.
 Notícia Original:
 "${originalContent.substring(0, 1000)}"
 
-Por favor, identifique e retorne APENAS o principal fato, alegação ou termo específico DENTRO DA "Notícia Original" que é o ponto central dessa suspeita e que poderia ser usado como um termo de busca curto (máximo 7 palavras) para verificar sua veracidade ou encontrar mais informações. Retorne APENAS o termo de busca.
-Se a suspeita for geral ou não houver um termo específico pesquisável, retorne "N/A".
+Por favor, identifique e retorne APENAS o principal fato, alegação ou termo específico DENTRO DA "Notícia Original" que causa a MAIOR SUSPEITA ou parece ser o ponto mais frágil/questionável da notícia. Este termo deve ser curto (máximo 7 palavras) e pesquisável para verificação.
+Se a suspeita for geral ou não houver um termo específico, retorne "N/A".
             `;
             
-            const incongruityPromptFilePath = path.join(SAVE_DIR, "low_truth_chance", `gemini_payload_incongruity_prompt_${getFormattedTimestamp()}.json`);
-            fs.writeFileSync(incongruityPromptFilePath, JSON.stringify({ prompt: getIncongruityPrompt }, null, 2), "utf8");
+            const suspicionPromptFilePath = path.join(SAVE_DIR, "low_truth_chance_investigation", `gemini_payload_suspicion_prompt_${getFormattedTimestamp()}.json`);
+            fs.writeFileSync(suspicionPromptFilePath, JSON.stringify({ prompt: getSuspicionPointPrompt }, null, 2), "utf8");
             
-            console.log("Solicitando termo de incongruência ao Gemini...");
-            const incongruityResult = await model.generateContent(getIncongruityPrompt);
-            let searchableIncongruity = incongruityResult.response.text().trim();
-            searchableIncongruity = searchableIncongruity.replace(/^["']|["']$/g, "");
-            console.log("Termo de incongruência recebido:", searchableIncongruity);
+            console.log("Solicitando termo de suspeita ao Gemini...");
+            const suspicionResult = await model.generateContent(getSuspicionPointPrompt);
+            let searchableSuspicion = suspicionResult.response.text().trim();
+            searchableSuspicion = searchableSuspicion.replace(/^["']|["']$/g, "");
+            console.log("Termo de suspeita recebido:", searchableSuspicion);
 
-            if (searchableIncongruity.toLowerCase() !== "n/a" && searchableIncongruity.length > 0) {
-                let incongruityEvidenceResults = [];
+            if (searchableSuspicion.toLowerCase() !== "n/a" && searchableSuspicion.length > 0) {
+                let suspicionEvidenceResults = [];
                 try {
-                    console.log(`Buscando evidências para a incongruência: "${searchableIncongruity}"...`);
-                    incongruityEvidenceResults = await collectExternalEvidence(searchableIncongruity);
+                    console.log(`Buscando evidências sobre o ponto de suspeita: "${searchableSuspicion}"...`);
+                    suspicionEvidenceResults = await collectExternalEvidence(searchableSuspicion);
                 } catch (err) {
-                    console.error("Erro ao consultar Google CSE (incongruência):", err.message);
+                    console.error("Erro ao consultar Google CSE (ponto de suspeita):", err.message);
                 }
 
-                const incongruityEvidenceText = incongruityEvidenceResults.length
-                    ? incongruityEvidenceResults.map(e => {
+                const suspicionEvidenceText = suspicionEvidenceResults.length
+                    ? suspicionEvidenceResults.map(e => {
                         const confiavelLabel = e.isTrusted ? "[FONTE CONFIÁVEL]" : "[OUTRA FONTE]";
                         return `${confiavelLabel}\nTítulo: ${e.title}\nLink: ${e.link}\nResumo: ${e.snippet}`;
                     }).join("\n\n")
-                    : "Nenhuma fonte externa adicional foi localizada para a incongruência investigada.";
+                    : "Nenhuma fonte externa adicional foi localizada para o ponto de suspeita investigado.";
 
-                const reAnalysisPrompt = `
-REAVALIAÇÃO DE NOTÍCIA.
-Uma análise inicial desta notícia indicou ${chance}% de chance de ser verdadeiro.
-Foi identificado o seguinte ponto para investigação adicional: "${searchableIncongruity}".
+                const reAnalysisForLowTruthPrompt = `
+REAVALIAÇÃO DE NOTÍCIA (BAIXA CONFIANÇA INICIAL).
+Uma análise inicial indicou ${chance}% de chance de ser verdadeira (baixa confiança).
+O ponto de maior suspeita identificado foi: "${searchableSuspicion}".
 Uma nova busca foi realizada sobre este ponto.
 
-Sua tarefa é REAVALIAR a notícia original considerando TODAS as fontes de evidência: as fontes externas iniciais E as fontes encontradas ao pesquisar o ponto "${searchableIncongruity}".
+Sua tarefa é REAVALIAR a notícia original considerando TODAS as fontes: as iniciais E as encontradas sobre o ponto "${searchableSuspicion}".
 
 DIRETRIZES PARA SUA ANALISE:
-- A data atual é "${currentDate}". Considere seu conhecimento limitado sobre eventos muito recentes.
-- Sua análise deve ter no máximo 240 caracteres.
-- Dê uma NOVA porcentagem estimada de chance de ser verdadeiro. Se for mais de 95%, arredonde para 100%. (Ex: "Nova chance de ser verdadeiro: 30%")
-- Explique o porquê da notícia ser considerada falsa ou verdadeira, AGORA considerando TODAS as evidências.
-- Foque em como a investigação do ponto "${searchableIncongruity}" afetou a análise.
+- A data atual é "${currentDate}".
+- Máximo 240 caracteres.
+- Dê uma NOVA porcentagem estimada de chance de ser VERDADEIRO.
+- Explique sua conclusão (falsa ou verdadeira), AGORA considerando TODAS as evidências.
+- Foque em como a investigação do ponto "${searchableSuspicion}" afetou sua análise.
+- Após a porcentagem, coloque uma quebra de linha antes de iniciar a explicação.
 
 Notícia original:
 "${originalContent.substring(0, 1000)}"
-
-Fontes externas INICIAIS (sobre o título da notícia):
+Fontes externas INICIAIS:
 ${initialEvidenceText}
-
-Fontes externas ADICIONAIS (encontradas sobre o ponto investigado "${searchableIncongruity}"):
-${incongruityEvidenceText}
-
+Fontes externas ADICIONAIS (sobre o ponto de suspeita "${searchableSuspicion}"):
+${suspicionEvidenceText}
 Com base em TUDO isso, sua nova análise concisa e porcentagem:
                 `;
                 
-                // savedFilePath é atualizado AQUI, antes de salvar o payload da reanálise.
-                savedFilePath = path.join(SAVE_DIR, "low_truth_chance", `gemini_payload_reanalysis_${getFormattedTimestamp()}.json`);
-                fs.writeFileSync(savedFilePath, JSON.stringify({ url, originalContent, initialExternalEvidence, incongruityEvidenceResults, prompt: reAnalysisPrompt }, null, 2), "utf8");
+                savedFilePath = path.join(SAVE_DIR, "low_truth_chance_investigation", `gemini_payload_reanalysis_${getFormattedTimestamp()}.json`);
+                fs.writeFileSync(savedFilePath, JSON.stringify({ url, originalContent, initialExternalEvidence, suspicionEvidenceResults, prompt: reAnalysisForLowTruthPrompt }, null, 2), "utf8");
 
-                console.log("Realizando reanálise com Gemini...");
-                const finalResult = await model.generateContent(reAnalysisPrompt);
+                console.log("Realizando reanálise (baixa confiança inicial) com Gemini...");
+                const finalResult = await model.generateContent(reAnalysisForLowTruthPrompt);
                 finalResponseText = finalResult.response.text();
-                console.log("RAW Resposta da reanálise:", JSON.stringify(finalResponseText));
-            } else { // Este é o else do if (searchableIncongruity.toLowerCase() !== "n/a" ...)
-                console.log("Nenhum termo de incongruência pesquisável retornado ou N/A. Usando a primeira análise com ressalva.");
-                finalResponseText = `Análise inicial indicou ${chance}% de chance de ser verdadeira, mas não foi possível identificar um ponto específico para nova busca. Resposta inicial: ${firstResponseText}`;
-                // savedFilePath permanece o 'initial' já que estamos usando firstResponseText
+                console.log("RAW Resposta da reanálise (baixa confiança inicial):", JSON.stringify(finalResponseText));
+            } else {
+                console.log("Nenhum termo de suspeita pesquisável retornado. Usando a primeira análise com ressalva.");
+                finalResponseText = `Análise inicial indicou ${chance}% de chance de ser verdadeira, mas não foi possível identificar um ponto específico para investigação adicional. Resposta inicial: ${firstResponseText}`;
             }
         } 
-        else if (chance !== null && chance <= 90) { 
-            console.log(`Chance >= 90 (${chance}%). Iniciando etapa para buscar confirmação do fato mais verdadeiro.`);
-            const getTruestFactPrompt = `
-A análise anterior da notícia abaixo indicou uma probabilidade muito alta (${chance}%) de ser verdadeira, sugerindo que é provavelmente falso.
+        else if (chance !== null && chance >= 90) { 
+            console.log(`Chance de ser verdadeiro >= 90% (${chance}%). Buscando confirmação adicional do fato central.`);
+            const getStrongestFactPrompt = `
+A análise anterior desta notícia indicou uma probabilidade muito alta (${chance}%) de ser verdadeira.
 Notícia Original:
 "${originalContent.substring(0, 1000)}"
 
-Por favor, identifique e retorne APENAS o principal fato, alegação ou termo específico DENTRO DA "Notícia Original" que você considera o MAIS VERDADEIRO e central para a notícia, e que poderia ser usado como um termo de busca curto (máximo 7 palavras) para encontrar mais informações de suporte. Retorne como forma de pergunta o contrário do fato.
+Por favor, identifique e retorne APENAS o principal fato ou alegação DENTRO DA "Notícia Original" que você considera o MAIS CENTRAL e representativo da veracidade da notícia. Este termo deve ser curto (máximo 7 palavras) e pesquisável para encontrar fontes de suporte adicionais.
 Se não houver um fato específico claramente destacável, retorne "N/A".
-Exemplo de noticia "O papa está vivo e bem"
-Exemplo de retorno "O papa morreu?"
+Exemplo de retorno para notícia "Prefeito anuncia novo parque": "anúncio novo parque pelo prefeito"
             `;
             
-            const truestFactPromptFilePath = path.join(SAVE_DIR, "high_truth_chance", `gemini_payload_truestfact_prompt_${getFormattedTimestamp()}.json`);
-            fs.writeFileSync(truestFactPromptFilePath, JSON.stringify({ prompt: getTruestFactPrompt }, null, 2), "utf8");
+            const strongestFactPromptFilePath = path.join(SAVE_DIR, "high_truth_chance_confirmation", `gemini_payload_strongestfact_prompt_${getFormattedTimestamp()}.json`);
+            fs.writeFileSync(strongestFactPromptFilePath, JSON.stringify({ prompt: getStrongestFactPrompt }, null, 2), "utf8");
 
-            console.log("Solicitando termo do fato mais verdadeiro ao Gemini...");
-            const truestFactResult = await model.generateContent(getTruestFactPrompt);
-            let searchableTruestFact = truestFactResult.response.text().trim();
-            searchableTruestFact = searchableTruestFact.replace(/^["']|["']$/g, ""); 
-            console.log("Termo do fato mais verdadeiro recebido:", searchableTruestFact);
+            console.log("Solicitando termo do fato mais forte ao Gemini...");
+            const strongestFactResult = await model.generateContent(getStrongestFactPrompt);
+            let searchableStrongestFact = strongestFactResult.response.text().trim();
+            searchableStrongestFact = searchableStrongestFact.replace(/^["']|["']$/g, ""); 
+            console.log("Termo do fato mais forte recebido:", searchableStrongestFact);
 
-            if (searchableTruestFact.toLowerCase() !== "n/a" && searchableTruestFact.length > 0) {
-                let truestFactEvidenceResults = [];
+            if (searchableStrongestFact.toLowerCase() !== "n/a" && searchableStrongestFact.length > 0) {
+                let strongestFactEvidenceResults = [];
                 try {
-                    console.log(`Buscando evidências para o fato mais verdadeiro: "${searchableTruestFact}"...`);
-                    truestFactEvidenceResults = await collectExternalEvidence(searchableTruestFact);
+                    console.log(`Buscando evidências para o fato mais forte: "${searchableStrongestFact}"...`);
+                    strongestFactEvidenceResults = await collectExternalEvidence(searchableStrongestFact);
                 } catch (err) {
-                    console.error("Erro ao consultar Google CSE (fato mais verdadeiro):", err.message);
+                    console.error("Erro ao consultar Google CSE (fato mais forte):", err.message);
                 }
 
-                const truestFactEvidenceText = truestFactEvidenceResults.length
-                    ? truestFactEvidenceResults.map(e => {
+                const strongestFactEvidenceText = strongestFactEvidenceResults.length
+                    ? strongestFactEvidenceResults.map(e => {
                         const confiavelLabel = e.isTrusted ? "[FONTE CONFIÁVEL]" : "[OUTRA FONTE]";
                         return `${confiavelLabel}\nTítulo: ${e.title}\nLink: ${e.link}\nResumo: ${e.snippet}`;
                     }).join("\n\n")
                     : "Nenhuma fonte externa adicional foi localizada para o fato investigado.";
-
+                
                 const reConfirmationPrompt = `
-RECONFIRMAÇÃO DE NOTÍCIA.
-Uma análise inicial desta notícia indicou uma baixa probabilidade (${chance}%) de ser verdadeira, sugerindo ser verdadeira.
-Foi identificado o seguinte fato central para busca de mais confirmação: "${searchableTruestFact}".
+RECONFIRMAÇÃO DE NOTÍCIA (ALTA CONFIANÇA INICIAL).
+Uma análise inicial desta notícia indicou ${chance}% de chance de ser verdadeira (alta confiança).
+O fato central identificado para busca de mais confirmação foi: "${searchableStrongestFact}".
 Uma nova busca foi realizada sobre este ponto.
 
-Sua tarefa é REAVALIAR a notícia original, considerando TODAS as fontes de evidência: as fontes externas iniciais E as fontes encontradas ao pesquisar o fato "${searchableTruestFact}".
-O objetivo é confirmar ou refinar a análise inicial.
-
-- Data atual é "${currentDate}"
-- Considere seu conhecimento limitado sobre eventos muito recentes.
+Sua tarefa é REAVALIAR a notícia original, considerando TODAS as fontes de evidência. O objetivo é solidificar a confiança na veracidade.
 
 DIRETRIZES PARA SUA REAVALIAÇÃO (máximo 240 caracteres):
-1. Dê uma NOVA porcentagem estimada de chance de ser verdadeiro (deve permanecer baixa, idealmente 0% a ${chance}%, se a confirmação for forte). (Ex: "Nova chance de ser verdadeiro: 5%")
-2. Explique brevemente como a evidência adicional sobre "${searchableTruestFact}" suporta ou reforça a veracidade da notícia. Se a evidência adicional não for conclusiva ou não mudar a análise, apenas reitere a confiança.
+1. Dê uma NOVA porcentagem estimada de chance de ser VERDADEIRO (deve permanecer alta ou aumentar, idealmente de ${chance}% a 100%, se a confirmação for forte). (Ex: "Nova chance de ser verdadeiro: 98%")
+2. Explique brevemente como a evidência adicional sobre "${searchableStrongestFact}" REFORÇA a veracidade da notícia. Se a evidência adicional não for conclusiva mas não contradisser, mantenha a alta confiança.
+- Após a porcentagem, coloque uma quebra de linha antes de iniciar a explicação.
 
 Notícia original:
 "${originalContent.substring(0, 1000)}"
-
-Fontes externas INICIAIS (sobre o título da notícia):
+Fontes externas INICIAIS:
 ${initialEvidenceText}
-
-Fontes externas ADICIONAIS (encontradas sobre o fato central "${searchableTruestFact}"):
-${truestFactEvidenceText}
-
+Fontes externas ADICIONAIS (sobre o fato central "${searchableStrongestFact}"):
+${strongestFactEvidenceText}
 Com base em TUDO isso, sua nova análise concisa e porcentagem:
                 `;
                 
-                savedFilePath = path.join(SAVE_DIR, "high_truth_chance", `gemini_payload_reconfirmation_${getFormattedTimestamp()}.json`);
-                fs.writeFileSync(savedFilePath, JSON.stringify({ url, originalContent, initialExternalEvidence, truestFactEvidenceResults, prompt: reConfirmationPrompt }, null, 2), "utf8");
+                savedFilePath = path.join(SAVE_DIR, "high_truth_chance_confirmation", `gemini_payload_reconfirmation_${getFormattedTimestamp()}.json`);
+                fs.writeFileSync(savedFilePath, JSON.stringify({ url, originalContent, initialExternalEvidence, strongestFactEvidenceResults, prompt: reConfirmationPrompt }, null, 2), "utf8");
                 
-                console.log("Realizando reanálise de confirmação com Gemini...");
+                console.log("Realizando reanálise de confirmação (alta confiança inicial) com Gemini...");
                 const finalConfirmationResult = await model.generateContent(reConfirmationPrompt);
                 finalResponseText = finalConfirmationResult.response.text();
-                console.log("RAW Resposta da reanálise de confirmação:", JSON.stringify(finalResponseText));
+                console.log("RAW Resposta da reanálise de confirmação (alta confiança inicial):", JSON.stringify(finalResponseText));
             } else {
-                console.log("Nenhum termo de fato mais verdadeiro pesquisável retornado ou N/A. Usando a primeira análise.");
+                console.log("Nenhum termo de fato mais forte pesquisável retornado. Usando a primeira análise.");
                 finalResponseText = firstResponseText; 
             }
         } 
         else {
             if (chance === null) {
-                console.log("Chance não pôde ser extraída. Usando a primeira análise.");
+                console.log("Chance de ser verdadeiro não pôde ser extraída. Usando a primeira análise.");
             } else {
-                console.log(`Chance entre 10% e 59% (${chance}%). Usando a primeira análise.`);
+                console.log(`Chance de ser verdadeiro intermediária (${chance}%). Usando a primeira análise.`);
             }
             finalResponseText = firstResponseText;
         }
         
-        // Limpeza do finalResponseText para remover ponto inicial ou espaços extras
         if (finalResponseText) {
             let cleanedText = String(finalResponseText).trim(); 
             const leadingDotPattern = /^\s*\.\s*/; 
