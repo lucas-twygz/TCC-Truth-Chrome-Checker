@@ -31,7 +31,12 @@
             "128": "extension/assets/icon.png"
         }
     },
+    "icons": {  
+        "16": "extension/assets/icon.png",
+        "48": "extension/assets/icon.png",
+        "128": "extension/assets/icon.png"
+    },
     "content_security_policy": {
-        "extension_pages": "default-src 'self'; script-src  'self'; connect-src 'self' http://localhost:3000; object-src 'self'"
+        "extension_pages": "script-src 'self'; connect-src 'self' http://localhost:3000; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; object-src 'self'"
     }
 }

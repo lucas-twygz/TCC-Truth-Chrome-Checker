@@ -8,26 +8,61 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <h1>Truth Chrome Checker</h1>
-        <button id="scrapeButton">Analisar Página Atual</button>
-        
-        <div class="gauge-container">
-            <div class="gauge-bar-track">
-                <div id="gaugeBar" class="gauge-bar-fill"></div>
-            </div>
-            <p id="percentageText" class="percentage-text">--% Falso</p>
-        </div>
-        
-        <p id="analysisResultText" class="analysis-result-text"></p>
+    <span id="settingsIcon" class="settings-icon" title="Configurar Chaves de API">&#9881;</span> 
 
-        <footer class="popup-footer">
-            <h2>Equipe:</h2>
-            <p>Lucas Melo de Souza - 2214628</p>
-            <p>Lucas de Matos Oliveira - 2214646</p>
-            <p>Antonio Alves Araújo - 2216961</p>
-        </footer>
+    <div class="container main-page"> 
+        <h1>Truth Chrome Checker</h1>
+
+        <div id="analysisSection" class="">
+            <button id="scrapeButton">Analisar Página Atual</button>
+            
+            <div class="gauge-container">
+                <div class="gauge-bar-track">
+                    <div id="gaugeBar" class="gauge-bar-fill"></div>
+                </div>
+                <p id="percentageText" class="percentage-text hidden">--% Verificando</p>
+            </div>
+            
+            <p id="analysisResultText" class="analysis-result-text">Clique em "Analisar Página Atual" para começar.</p>
         </div>
+    </div>
+
+    <div id="configSection" class="config-section hidden">
+        <span id="backButton" class="back-button" title="Voltar para a página principal">&#8592;</span>
+        <h2>Configurar Chaves de API</h2>
+        <p>Para analisar as páginas, você precisa fornecer suas próprias chaves de API do Google.</p>
+            
+        <div class="api-key-input-group">
+            <label for="geminiApiKey">Chave API Gemini: <span class="tutorial-icon" id="geminiTutorialIcon" title="Ver tutorial Gemini API Key">?</span></label>
+            <input type="text" id="geminiApiKey" name="geminiApiKey" placeholder="Cole sua chave API Gemini aqui">
+            <button id="getGeminiKey" class="get-key-button">Obter Chave Gemini</button>
+        </div>
+
+        <div class="api-key-input-group">
+            <label for="customSearchApiKey">Chave API Custom Search: <span class="tutorial-icon" id="customSearchTutorialIcon" title="Ver tutorial Custom Search API Key">?</span></label>
+            <input type="text" id="customSearchApiKey" name="customSearchApiKey" placeholder="Cole sua chave API Custom Search aqui">
+            <button id="getCustomSearchKey" class="get-key-button">Obter Chave Custom Search</button>
+        </div>
+
+        <div class="api-key-input-group">
+            <label for="programmableSearchEngineId">ID do Mecanismo de Pesquisa: <span class="tutorial-icon" id="cxIdTutorialIcon" title="Ver tutorial ID">?</span></label>
+            <input type="text" id="programmableSearchEngineId" name="programmableSearchEngineId" placeholder="Cole seu ID aqui">
+            <button id="getSearchEngineId" class="get-key-button">Obter ID</button>
+        </div>
+
+        <button id="saveApiKeysButton">Salvar Chaves</button>
+        <p id="configStatus" class="status-message"></p>
+    </div>
+    
+    <div id="tutorialModal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close-button" id="modalCloseButton" title="Fechar tutorial">&times;</button>
+            <h3 id="tutorialTitle"></h3>
+            <div id="tutorialBody" class="tutorial-body-content">
+                <p>Carregando tutorial...</p> 
+            </div>
+        </div>
+    </div>
 
     <script src="./popup.js"></script>
 </body>
