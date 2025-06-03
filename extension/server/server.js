@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const googleNewsSearch = require("./googleNewsSearch");
+const { URL } = require('url');
 
 const app = express();
 const PORT = 3000;
@@ -19,6 +20,52 @@ for (const folder of SUBFOLDERS) {
     const subPath = path.join(SAVE_DIR, folder);
     if (!fs.existsSync(subPath)) fs.mkdirSync(subPath);
 }
+
+const ANALYSIS_CACHE_FILE = path.join(__dirname, "analysis_cache.json");
+let analysisCache = {};
+const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+function normalizeUrlForKey(urlString) {
+    try {
+        const urlObj = new URL(urlString);
+        let pathname = urlObj.pathname;
+        if (pathname.length > 1 && pathname.endsWith('/')) {
+            pathname = pathname.slice(0, -1);
+        }
+        const hostname = urlObj.hostname.startsWith('www.') ? urlObj.hostname.substring(4) : urlObj.hostname;
+        return `${urlObj.protocol}//${hostname}${pathname}`;
+    } catch (e) {
+        console.warn("Não foi possível normalizar a URL para chave de cache:", urlString, e.message);
+        return urlString;
+    }
+}
+
+function loadCache() {
+    try {
+        if (fs.existsSync(ANALYSIS_CACHE_FILE)) {
+            const data = fs.readFileSync(ANALYSIS_CACHE_FILE, "utf8");
+            analysisCache = JSON.parse(data);
+            console.log("Cache de análises carregado.");
+        } else {
+            analysisCache = {};
+            console.log("Nenhum arquivo de cache encontrado, iniciando com cache vazio.");
+        }
+    } catch (error) {
+        console.error("Erro ao carregar o cache de análises:", error);
+        analysisCache = {};
+    }
+}
+
+function saveCache() {
+    try {
+        fs.writeFileSync(ANALYSIS_CACHE_FILE, JSON.stringify(analysisCache, null, 2), "utf8");
+        console.log("Cache de análises salvo.");
+    } catch (error) {
+        console.error("Erro ao salvar o cache de análises:", error);
+    }
+}
+
+loadCache();
 
 function extractPercentage(responseText) {
     if (!responseText) return null;
@@ -40,16 +87,32 @@ function getFormattedTimestamp() {
 }
 
 app.post("/scrape", async (req, res) => {
-    const { url, content: originalContent, apiKeyGemini, apiKeyCustomSearch, searchEngineId } = req.body;
+    const { url: originalUrl, content: originalContent, apiKeyGemini, apiKeyCustomSearch, searchEngineId, force_reanalyze } = req.body;
 
     const currentDate = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
-    if (!url || !originalContent) {
+    if (!originalUrl || !originalContent) {
         return res.status(400).json({ error: "URL ou conteúdo ausente.", response: "Erro: URL ou conteúdo da página ausente na requisição." });
     }
-
     if (!apiKeyGemini || !apiKeyCustomSearch || !searchEngineId) {
         return res.status(400).json({ error: "Chaves de API ausentes.", response: "Erro: Uma ou mais chaves de API não foram fornecidas. Por favor, configure-as na extensão." });
+    }
+
+    const cacheKey = normalizeUrlForKey(originalUrl);
+    console.log(`URL original: ${originalUrl}, Chave de Cache: ${cacheKey}`);
+
+    if (!force_reanalyze && analysisCache[cacheKey]) {
+        const cachedEntry = analysisCache[cacheKey];
+        const cacheAge = Date.now() - new Date(cachedEntry.timestamp).getTime();
+        if (cacheAge < ONE_DAY_IN_MS) {
+            console.log(`Retornando resultado do cache para chave ${cacheKey} (idade: ${Math.round(cacheAge / (60 * 1000))} min).`);
+            return res.json({
+                status: "cached_recent",
+                data: cachedEntry
+            });
+        } else {
+            console.log(`Cache antigo para chave ${cacheKey}, prosseguindo com nova análise.`);
+        }
     }
 
     let genAIInstance;
@@ -102,10 +165,10 @@ ${initialEvidenceText}
     let finalResponseText;
     let savedFilePath = path.join(SAVE_DIR, "initial", `gemini_payload_initial_${getFormattedTimestamp()}.json`);
     
-    fs.writeFileSync(savedFilePath, JSON.stringify({ url, originalContent, initialExternalEvidence, prompt: firstAnalysisPrompt }, null, 2), "utf8");
+    fs.writeFileSync(savedFilePath, JSON.stringify({ url: originalUrl, originalContent, initialExternalEvidence, prompt: firstAnalysisPrompt }, null, 2), "utf8");
 
     try {
-        console.log("Realizando primeira análise com Gemini (usando chave do cliente)...");
+        console.log("Realizando primeira análise com Gemini...");
         const firstResult = await modelInstance.generateContent(firstAnalysisPrompt);
         let firstResponseText = firstResult.response.text();
         console.log("RAW Resposta da primeira análise:", JSON.stringify(firstResponseText));
@@ -175,7 +238,7 @@ Com base em TUDO isso, sua nova análise concisa e porcentagem:
                 `;
                 
                 savedFilePath = path.join(SAVE_DIR, "low_truth_chance_investigation", `gemini_payload_reanalysis_${getFormattedTimestamp()}.json`);
-                fs.writeFileSync(savedFilePath, JSON.stringify({ url, originalContent, initialExternalEvidence, suspicionEvidenceResults, prompt: reAnalysisForLowTruthPrompt }, null, 2), "utf8");
+                fs.writeFileSync(savedFilePath, JSON.stringify({ url: originalUrl, originalContent, initialExternalEvidence, suspicionEvidenceResults, prompt: reAnalysisForLowTruthPrompt }, null, 2), "utf8");
 
                 console.log("Realizando reanálise (baixa confiança inicial) com Gemini...");
                 const finalResult = await modelInstance.generateContent(reAnalysisForLowTruthPrompt);
@@ -246,7 +309,7 @@ Com base em TUDO isso, sua nova análise concisa e porcentagem:
                 `;
                 
                 savedFilePath = path.join(SAVE_DIR, "high_truth_chance_confirmation", `gemini_payload_reconfirmation_${getFormattedTimestamp()}.json`);
-                fs.writeFileSync(savedFilePath, JSON.stringify({ url, originalContent, initialExternalEvidence, strongestFactEvidenceResults, prompt: reConfirmationPrompt }, null, 2), "utf8");
+                fs.writeFileSync(savedFilePath, JSON.stringify({ url: originalUrl, originalContent, initialExternalEvidence, strongestFactEvidenceResults, prompt: reConfirmationPrompt }, null, 2), "utf8");
                 
                 console.log("Realizando reanálise de confirmação (alta confiança inicial) com Gemini...");
                 const finalConfirmationResult = await modelInstance.generateContent(reConfirmationPrompt);
@@ -275,11 +338,20 @@ Com base em TUDO isso, sua nova análise concisa e porcentagem:
             finalResponseText = cleanedText.trim(); 
             console.log("Texto final limpo para resposta JSON:", JSON.stringify(finalResponseText));
         } else {
-            finalResponseText = "Erro: Não foi possível obter uma resposta da análise.";
-            console.warn("finalResponseText estava indefinido antes de enviar a resposta JSON.");
+            finalResponseText = "Erro: Não foi possível obter uma resposta da análise da IA.";
+            console.warn("finalResponseText estava indefinido antes de enviar a resposta JSON, usando mensagem de erro padrão.");
         }
         
-        res.json({ response: finalResponseText, savedFile: savedFilePath });
+        if (finalResponseText && !finalResponseText.toLowerCase().includes("erro:") && !finalResponseText.toLowerCase().includes("insira uma página de notícia válida")) {
+            analysisCache[cacheKey] = {
+                originalUrl: originalUrl,
+                timestamp: new Date().toISOString(),
+                response: finalResponseText,
+            };
+            saveCache();
+        }
+        
+        res.json({ status: "analyzed", response: finalResponseText, savedFile: savedFilePath });
 
     } catch (error) {
         console.error("Erro no fluxo de análise do Gemini:", error.message, error.stack);
@@ -287,26 +359,34 @@ Com base em TUDO isso, sua nova análise concisa e porcentagem:
         let statusCode = 500;
         let clientResponseMessage = "Erro durante a análise com o modelo de IA.";
 
-        if (error.message && (error.message.toLowerCase().includes("api key not valid") || 
-                               error.message.toLowerCase().includes("permission_denied") ||
-                               error.message.toLowerCase().includes("authentication failed") ||
-                               (error.message.toLowerCase().includes("resource has been exhausted") && error.message.toLowerCase().includes("api key")) ||
-                               error.message.toLowerCase().includes("api_key_invalid")
-                               )) {
-            clientResponseMessage = "A Chave API Gemini parece estar inválida, sem permissões ou atingiu a cota. Por favor, verifique-a.";
-            statusCode = 401;
-        } else if (error.status === 400 || (error.message && error.message.toLowerCase().includes("invalid"))) {
-             clientResponseMessage = "Requisição inválida para a API Gemini. Pode ser um problema com a chave ou o formato do conteúdo enviado.";
-             statusCode = 400;
+        if (error.message) {
+            const lowerErrorMessage = error.message.toLowerCase();
+            if (lowerErrorMessage.includes("api key not valid") || 
+                lowerErrorMessage.includes("permission_denied") ||
+                lowerErrorMessage.includes("authentication failed") ||
+                (lowerErrorMessage.includes("resource has been exhausted") && lowerErrorMessage.includes("api key")) ||
+                lowerErrorMessage.includes("api_key_invalid")) {
+                clientResponseMessage = "A Chave API Gemini parece estar inválida, sem permissões ou atingiu a cota. Por favor, verifique-a.";
+                statusCode = 401;
+            } else if (error.status === 400 || lowerErrorMessage.includes("invalid")) {
+                 clientResponseMessage = "Requisição inválida para a API Gemini. Pode ser um problema com a chave ou o formato do conteúdo enviado.";
+                 statusCode = 400;
+            }
         }
+        
+        let errorResponsePayload = { 
+            status: "error", 
+            error: "Erro ao gerar análise com Gemini.", 
+            details: errorDetails, 
+            response: clientResponseMessage 
+        };
 
-        let errorResponse = { error: "Erro ao gerar análise com Gemini.", details: errorDetails, response: clientResponseMessage };
         if (savedFilePath && fs.existsSync(savedFilePath)) {
-            errorResponse.savedFileIfError = savedFilePath;
+            errorResponsePayload.savedFileIfError = savedFilePath;
         } else if (savedFilePath) {
-            errorResponse.attemptedToSaveTo = savedFilePath;
+            errorResponsePayload.attemptedToSaveTo = savedFilePath;
         }
-        res.status(statusCode).json(errorResponse);
+        res.status(statusCode).json(errorResponsePayload);
     }
 });
 

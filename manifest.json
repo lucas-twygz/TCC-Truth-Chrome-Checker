@@ -37,6 +37,6 @@
         "128": "extension/assets/icon.png"
     },
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; connect-src 'self' http://localhost:3000; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; object-src 'self'"
+        "extension_pages": "script-src 'self'; connect-src 'self' http://localhost:3000; style-src 'self' https://fonts.googleapis.com; style-src-elem 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; object-src 'self'"
     }
 }
