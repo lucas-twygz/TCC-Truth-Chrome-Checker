@@ -74,6 +74,7 @@ O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornec
 
 ## Estrutura do Projeto
 
+```
 TCC-TRUTH-CHROME-CHECKER/
 ├── extension/                   # Tudo relacionado à extensão do Chrome
 │   ├── assets/                  # Imagens e ícones
@@ -109,7 +110,7 @@ TCC-TRUTH-CHROME-CHECKER/
 ├── .gitignore                   # Arquivos ignorados pelo Git
 ├── .env                         # Arquivo para variáveis de ambiente (API keys - NÃO DEVE SER COMMITADO)
 └── README.md                    # Documentação do projeto
-
+```
 
 
 ## Configuração da API
