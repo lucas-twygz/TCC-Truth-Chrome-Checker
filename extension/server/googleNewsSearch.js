@@ -1,6 +1,3 @@
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID;
-
 const TRUSTED_SOURCES = [
     "bbc.com", "nytimes.com", "theguardian.com", "reuters.com",
     "apnews.com", "cnn.com", "estadao.com.br", "g1.globo.com",
@@ -28,12 +25,21 @@ function similarity(a, b) {
     return (2 * intersection) / (A.size + B.size);
 }
 
-async function searchNews(title, num = 10) {
+async function searchNews(title, apiKey, cseId, num = 10) {
+    if (!apiKey || !cseId) {
+        throw new Error("Chave da API Google (apiKey) ou ID do Mecanismo de Busca (cseId) não fornecidos para searchNews.");
+    }
     const query = encodeURIComponent(title);
-    const endpoint = `https://customsearch.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${GOOGLE_CSE_ID}&num=${num}&q=${query}&sort=date`;
+    const endpoint = `https://customsearch.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cseId}&num=${num}&q=${query}&sort=date`;
 
     const res = await fetch(endpoint);
-    if (!res.ok) throw new Error(`Search API error ${res.status}`);
+    if (!res.ok) {
+        let errorBodyText = "Não foi possível obter detalhes do erro da API.";
+        try {
+            errorBodyText = await res.text();
+        } catch (e) { }
+        throw new Error(`Erro na API de Pesquisa Google (${res.status}): ${res.statusText}. Detalhes: ${errorBodyText}`);
+    }
     const data = await res.json();
 
     return (data.items || []).map(item => ({
@@ -43,8 +49,8 @@ async function searchNews(title, num = 10) {
     }));
 }
 
-async function collectExternalEvidence(originalTitle) {
-    const rawResults = await searchNews(originalTitle);
+async function collectExternalEvidence(originalTitle, apiKeyCustomSearch, searchEngineId) {
+    const rawResults = await searchNews(originalTitle, apiKeyCustomSearch, searchEngineId);
 
     const resultsWithTrustFlag = rawResults.map(r => {
         let isTrustedSource = false;
@@ -54,7 +60,7 @@ async function collectExternalEvidence(originalTitle) {
         } catch (e) {
             console.warn("URL inválida em collectExternalEvidence:", r.link, e.message);
         }
-        return { ...r, isTrusted: isTrustedSource }; // Adiciona a flag isTrusted
+        return { ...r, isTrusted: isTrustedSource };
     });
 
     const trustedAndSimilar = resultsWithTrustFlag.filter(r => {

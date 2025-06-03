@@ -1,21 +1,16 @@
-require("dotenv").config();
-const { collectExternalEvidence } = require("./googleNewsSearch");
-
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const googleNewsSearch = require("./googleNewsSearch");
+const { URL } = require('url');
 
 const app = express();
 const PORT = 3000;
-const GEMINI_API_KEY = process.env.API_KEY;
 
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.use(cors());
-
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
 
 const SAVE_DIR = path.join(__dirname, "captured_pages");
 if (!fs.existsSync(SAVE_DIR)) fs.mkdirSync(SAVE_DIR);
@@ -25,6 +20,52 @@ for (const folder of SUBFOLDERS) {
     const subPath = path.join(SAVE_DIR, folder);
     if (!fs.existsSync(subPath)) fs.mkdirSync(subPath);
 }
+
+const ANALYSIS_CACHE_FILE = path.join(__dirname, "analysis_cache.json");
+let analysisCache = {};
+const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+function normalizeUrlForKey(urlString) {
+    try {
+        const urlObj = new URL(urlString);
+        let pathname = urlObj.pathname;
+        if (pathname.length > 1 && pathname.endsWith('/')) {
+            pathname = pathname.slice(0, -1);
+        }
+        const hostname = urlObj.hostname.startsWith('www.') ? urlObj.hostname.substring(4) : urlObj.hostname;
+        return `${urlObj.protocol}//${hostname}${pathname}`;
+    } catch (e) {
+        console.warn("Não foi possível normalizar a URL para chave de cache:", urlString, e.message);
+        return urlString;
+    }
+}
+
+function loadCache() {
+    try {
+        if (fs.existsSync(ANALYSIS_CACHE_FILE)) {
+            const data = fs.readFileSync(ANALYSIS_CACHE_FILE, "utf8");
+            analysisCache = JSON.parse(data);
+            console.log("Cache de análises carregado.");
+        } else {
+            analysisCache = {};
+            console.log("Nenhum arquivo de cache encontrado, iniciando com cache vazio.");
+        }
+    } catch (error) {
+        console.error("Erro ao carregar o cache de análises:", error);
+        analysisCache = {};
+    }
+}
+
+function saveCache() {
+    try {
+        fs.writeFileSync(ANALYSIS_CACHE_FILE, JSON.stringify(analysisCache, null, 2), "utf8");
+        console.log("Cache de análises salvo.");
+    } catch (error) {
+        console.error("Erro ao salvar o cache de análises:", error);
+    }
+}
+
+loadCache();
 
 function extractPercentage(responseText) {
     if (!responseText) return null;
@@ -46,19 +87,53 @@ function getFormattedTimestamp() {
 }
 
 app.post("/scrape", async (req, res) => {
-    const { url, content: originalContent } = req.body;
+    const { url: originalUrl, content: originalContent, apiKeyGemini, apiKeyCustomSearch, searchEngineId, force_reanalyze } = req.body;
+
     const currentDate = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
-    if (!url || !originalContent) {
-        return res.status(400).json({ error: "URL ou conteúdo ausente." });
+    if (!originalUrl || !originalContent) {
+        return res.status(400).json({ error: "URL ou conteúdo ausente.", response: "Erro: URL ou conteúdo da página ausente na requisição." });
+    }
+    if (!apiKeyGemini || !apiKeyCustomSearch || !searchEngineId) {
+        return res.status(400).json({ error: "Chaves de API ausentes.", response: "Erro: Uma ou mais chaves de API não foram fornecidas. Por favor, configure-as na extensão." });
+    }
+
+    const cacheKey = normalizeUrlForKey(originalUrl);
+    console.log(`URL original: ${originalUrl}, Chave de Cache: ${cacheKey}`);
+
+    if (!force_reanalyze && analysisCache[cacheKey]) {
+        const cachedEntry = analysisCache[cacheKey];
+        const cacheAge = Date.now() - new Date(cachedEntry.timestamp).getTime();
+        if (cacheAge < ONE_DAY_IN_MS) {
+            console.log(`Retornando resultado do cache para chave ${cacheKey} (idade: ${Math.round(cacheAge / (60 * 1000))} min).`);
+            return res.json({
+                status: "cached_recent",
+                data: cachedEntry
+            });
+        } else {
+            console.log(`Cache antigo para chave ${cacheKey}, prosseguindo com nova análise.`);
+        }
+    }
+
+    let genAIInstance;
+    let modelInstance;
+    try {
+        genAIInstance = new GoogleGenerativeAI(apiKeyGemini);
+        modelInstance = genAIInstance.getGenerativeModel({ model: "gemini-2.0-flash-001" });
+    } catch (initError) {
+        console.error("Erro ao inicializar Gemini com a chave fornecida:", initError.message);
+        return res.status(500).json({ error: "Falha ao inicializar o serviço de IA.", details: initError.message, response: "Erro: Não foi possível inicializar o serviço de IA com a Chave API Gemini fornecida. Verifique se a chave é válida." });
     }
 
     const titleLine = originalContent.split("\n")[0].trim();
     let initialExternalEvidence = [];
     try {
-        initialExternalEvidence = await collectExternalEvidence(titleLine);
+        initialExternalEvidence = await googleNewsSearch.collectExternalEvidence(titleLine, apiKeyCustomSearch, searchEngineId);
     } catch (err) {
         console.error("Erro ao consultar Google CSE (inicial):", err.message);
+        if (err.message.includes("400") || err.message.includes("403") || err.message.toLowerCase().includes("api key not valid")) {
+            return res.status(400).json({ error: "Falha na API de Pesquisa Google.", details: err.message, response: "Erro: A Chave da API de Pesquisa Google ou o ID do Mecanismo de Pesquisa parecem estar inválidos. Por favor, verifique-os." });
+        }
     }
 
     const initialEvidenceText = initialExternalEvidence.length
@@ -90,11 +165,11 @@ ${initialEvidenceText}
     let finalResponseText;
     let savedFilePath = path.join(SAVE_DIR, "initial", `gemini_payload_initial_${getFormattedTimestamp()}.json`);
     
-    fs.writeFileSync(savedFilePath, JSON.stringify({ url, originalContent, initialExternalEvidence, prompt: firstAnalysisPrompt }, null, 2), "utf8");
+    fs.writeFileSync(savedFilePath, JSON.stringify({ url: originalUrl, originalContent, initialExternalEvidence, prompt: firstAnalysisPrompt }, null, 2), "utf8");
 
     try {
         console.log("Realizando primeira análise com Gemini...");
-        const firstResult = await model.generateContent(firstAnalysisPrompt);
+        const firstResult = await modelInstance.generateContent(firstAnalysisPrompt);
         let firstResponseText = firstResult.response.text();
         console.log("RAW Resposta da primeira análise:", JSON.stringify(firstResponseText));
 
@@ -116,7 +191,7 @@ Se a suspeita for geral ou não houver um termo específico, retorne "N/A".
             fs.writeFileSync(suspicionPromptFilePath, JSON.stringify({ prompt: getSuspicionPointPrompt }, null, 2), "utf8");
             
             console.log("Solicitando termo de suspeita ao Gemini...");
-            const suspicionResult = await model.generateContent(getSuspicionPointPrompt);
+            const suspicionResult = await modelInstance.generateContent(getSuspicionPointPrompt);
             let searchableSuspicion = suspicionResult.response.text().trim();
             searchableSuspicion = searchableSuspicion.replace(/^["']|["']$/g, "");
             console.log("Termo de suspeita recebido:", searchableSuspicion);
@@ -125,7 +200,7 @@ Se a suspeita for geral ou não houver um termo específico, retorne "N/A".
                 let suspicionEvidenceResults = [];
                 try {
                     console.log(`Buscando evidências sobre o ponto de suspeita: "${searchableSuspicion}"...`);
-                    suspicionEvidenceResults = await collectExternalEvidence(searchableSuspicion);
+                    suspicionEvidenceResults = await googleNewsSearch.collectExternalEvidence(searchableSuspicion, apiKeyCustomSearch, searchEngineId);
                 } catch (err) {
                     console.error("Erro ao consultar Google CSE (ponto de suspeita):", err.message);
                 }
@@ -163,15 +238,15 @@ Com base em TUDO isso, sua nova análise concisa e porcentagem:
                 `;
                 
                 savedFilePath = path.join(SAVE_DIR, "low_truth_chance_investigation", `gemini_payload_reanalysis_${getFormattedTimestamp()}.json`);
-                fs.writeFileSync(savedFilePath, JSON.stringify({ url, originalContent, initialExternalEvidence, suspicionEvidenceResults, prompt: reAnalysisForLowTruthPrompt }, null, 2), "utf8");
+                fs.writeFileSync(savedFilePath, JSON.stringify({ url: originalUrl, originalContent, initialExternalEvidence, suspicionEvidenceResults, prompt: reAnalysisForLowTruthPrompt }, null, 2), "utf8");
 
                 console.log("Realizando reanálise (baixa confiança inicial) com Gemini...");
-                const finalResult = await model.generateContent(reAnalysisForLowTruthPrompt);
+                const finalResult = await modelInstance.generateContent(reAnalysisForLowTruthPrompt);
                 finalResponseText = finalResult.response.text();
                 console.log("RAW Resposta da reanálise (baixa confiança inicial):", JSON.stringify(finalResponseText));
             } else {
                 console.log("Nenhum termo de suspeita pesquisável retornado. Usando a primeira análise com ressalva.");
-                finalResponseText = `Análise inicial indicou ${chance}% de chance de ser verdadeira, mas não foi possível identificar um ponto específico para investigação adicional. Resposta inicial: ${firstResponseText}`;
+                finalResponseText = `Análise inicial indicou ${chance}% de chance de ser verdadeira, mas não foi possível identificar um ponto específico para investigação adicional. Resposta inicial:\n${firstResponseText}`;
             }
         } 
         else if (chance !== null && chance >= 90) { 
@@ -190,7 +265,7 @@ Exemplo de retorno para notícia "Prefeito anuncia novo parque": "anúncio novo 
             fs.writeFileSync(strongestFactPromptFilePath, JSON.stringify({ prompt: getStrongestFactPrompt }, null, 2), "utf8");
 
             console.log("Solicitando termo do fato mais forte ao Gemini...");
-            const strongestFactResult = await model.generateContent(getStrongestFactPrompt);
+            const strongestFactResult = await modelInstance.generateContent(getStrongestFactPrompt);
             let searchableStrongestFact = strongestFactResult.response.text().trim();
             searchableStrongestFact = searchableStrongestFact.replace(/^["']|["']$/g, ""); 
             console.log("Termo do fato mais forte recebido:", searchableStrongestFact);
@@ -199,7 +274,7 @@ Exemplo de retorno para notícia "Prefeito anuncia novo parque": "anúncio novo 
                 let strongestFactEvidenceResults = [];
                 try {
                     console.log(`Buscando evidências para o fato mais forte: "${searchableStrongestFact}"...`);
-                    strongestFactEvidenceResults = await collectExternalEvidence(searchableStrongestFact);
+                    strongestFactEvidenceResults = await googleNewsSearch.collectExternalEvidence(searchableStrongestFact, apiKeyCustomSearch, searchEngineId);
                 } catch (err) {
                     console.error("Erro ao consultar Google CSE (fato mais forte):", err.message);
                 }
@@ -234,10 +309,10 @@ Com base em TUDO isso, sua nova análise concisa e porcentagem:
                 `;
                 
                 savedFilePath = path.join(SAVE_DIR, "high_truth_chance_confirmation", `gemini_payload_reconfirmation_${getFormattedTimestamp()}.json`);
-                fs.writeFileSync(savedFilePath, JSON.stringify({ url, originalContent, initialExternalEvidence, strongestFactEvidenceResults, prompt: reConfirmationPrompt }, null, 2), "utf8");
+                fs.writeFileSync(savedFilePath, JSON.stringify({ url: originalUrl, originalContent, initialExternalEvidence, strongestFactEvidenceResults, prompt: reConfirmationPrompt }, null, 2), "utf8");
                 
                 console.log("Realizando reanálise de confirmação (alta confiança inicial) com Gemini...");
-                const finalConfirmationResult = await model.generateContent(reConfirmationPrompt);
+                const finalConfirmationResult = await modelInstance.generateContent(reConfirmationPrompt);
                 finalResponseText = finalConfirmationResult.response.text();
                 console.log("RAW Resposta da reanálise de confirmação (alta confiança inicial):", JSON.stringify(finalResponseText));
             } else {
@@ -263,21 +338,55 @@ Com base em TUDO isso, sua nova análise concisa e porcentagem:
             finalResponseText = cleanedText.trim(); 
             console.log("Texto final limpo para resposta JSON:", JSON.stringify(finalResponseText));
         } else {
-            finalResponseText = "Erro: Não foi possível obter uma resposta da análise.";
-            console.warn("finalResponseText estava indefinido antes de enviar a resposta JSON.");
+            finalResponseText = "Erro: Não foi possível obter uma resposta da análise da IA.";
+            console.warn("finalResponseText estava indefinido antes de enviar a resposta JSON, usando mensagem de erro padrão.");
         }
         
-        res.json({ response: finalResponseText, savedFile: savedFilePath });
+        if (finalResponseText && !finalResponseText.toLowerCase().includes("erro:") && !finalResponseText.toLowerCase().includes("insira uma página de notícia válida")) {
+            analysisCache[cacheKey] = {
+                originalUrl: originalUrl,
+                timestamp: new Date().toISOString(),
+                response: finalResponseText,
+            };
+            saveCache();
+        }
+        
+        res.json({ status: "analyzed", response: finalResponseText, savedFile: savedFilePath });
 
     } catch (error) {
         console.error("Erro no fluxo de análise do Gemini:", error.message, error.stack);
-        let errorResponse = { error: "Erro ao gerar análise com Gemini.", details: error.message };
-        if (savedFilePath && fs.existsSync(savedFilePath)) {
-            errorResponse.savedFileIfError = savedFilePath;
-        } else if (savedFilePath) {
-            errorResponse.attemptedToSaveTo = savedFilePath;
+        let errorDetails = error.message;
+        let statusCode = 500;
+        let clientResponseMessage = "Erro durante a análise com o modelo de IA.";
+
+        if (error.message) {
+            const lowerErrorMessage = error.message.toLowerCase();
+            if (lowerErrorMessage.includes("api key not valid") || 
+                lowerErrorMessage.includes("permission_denied") ||
+                lowerErrorMessage.includes("authentication failed") ||
+                (lowerErrorMessage.includes("resource has been exhausted") && lowerErrorMessage.includes("api key")) ||
+                lowerErrorMessage.includes("api_key_invalid")) {
+                clientResponseMessage = "A Chave API Gemini parece estar inválida, sem permissões ou atingiu a cota. Por favor, verifique-a.";
+                statusCode = 401;
+            } else if (error.status === 400 || lowerErrorMessage.includes("invalid")) {
+                 clientResponseMessage = "Requisição inválida para a API Gemini. Pode ser um problema com a chave ou o formato do conteúdo enviado.";
+                 statusCode = 400;
+            }
         }
-        res.status(500).json(errorResponse);
+        
+        let errorResponsePayload = { 
+            status: "error", 
+            error: "Erro ao gerar análise com Gemini.", 
+            details: errorDetails, 
+            response: clientResponseMessage 
+        };
+
+        if (savedFilePath && fs.existsSync(savedFilePath)) {
+            errorResponsePayload.savedFileIfError = savedFilePath;
+        } else if (savedFilePath) {
+            errorResponsePayload.attemptedToSaveTo = savedFilePath;
+        }
+        res.status(statusCode).json(errorResponsePayload);
     }
 });
 

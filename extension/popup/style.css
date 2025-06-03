@@ -1,6 +1,6 @@
 body {
     width: 320px;
-    min-height: 280px;
+    min-height: 300px;
     padding: 20px;
     background-color: #f4f7f9;
     color: #333;
@@ -11,59 +11,91 @@ body {
     flex-direction: column;
     align-items: center;
     box-sizing: border-box;
+    position: relative;
 }
 
-.container {
+.container.main-page {
     width: 100%;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
+
+.settings-icon {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 1.6em;
+    color: #7f8c8d;
+    cursor: pointer;
+    z-index: 100;
+    padding: 5px;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.settings-icon:hover {
+    color: #34495e;
+}
+
+.back-button {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    font-size: 1.6em;
+    color: #7f8c8d;
+    cursor: pointer;
+    z-index: 10; /* Ajustado para estar abaixo do configSection mas acima de outros elementos */
+    padding: 5px;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.back-button:hover {
+    color: #34495e;
+}
+
 
 h1 {
-    font-size: 1.4em;
+    font-size: 1.5em;
     color: #2c3e50;
     margin-bottom: 20px;
-    font-weight: 500;
+    font-weight: 700;
+    margin-top: 15px; /* Espaço para o ícone de settings/back */
+    padding-top: 15px;
 }
 
-input {
-    width: calc(100% - 16px);
-    padding: 10px;
-    margin: 10px 0;
-    border: 1px solid #d1d8e0;
-    border-radius: 6px;
-    font-size: 14px;
-    box-sizing: border-box;
-}
-
-button {
+#scrapeButton {
     width: 100%;
     padding: 12px 15px;
-    margin-top: 10px;
-    margin-bottom: 20px;
+    margin-top: 0; /* Ajustado */
+    margin-bottom: 15px;
     background-color: #3498db;
     color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 15px;
+    font-size: 1em;
     font-weight: 500;
     transition: background-color 0.2s ease-in-out;
 }
 
-button:hover {
+#scrapeButton:hover {
     background-color: #2980b9;
 }
 
+
 .gauge-container {
     width: 100%;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
 }
 
 .gauge-bar-track {
     width: 100%;
-    height: 20px;
+    height: 22px;
     background-color: #e0e0e0;
-    border-radius: 10px;
+    border-radius: 11px;
     overflow: hidden;
     box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
 }
@@ -71,83 +103,451 @@ button:hover {
 .gauge-bar-fill {
     width: 0%;
     height: 100%;
-    background-color: #4CAF50;
-    border-radius: 10px;
+    background-color: #4CAF50; /* Cor inicial, será atualizada via JS */
+    border-radius: 11px;
     transition: width 0.5s ease-out, background-color 0.5s ease-out;
-    text-align: right;
-    line-height: 20px;
+    text-align: right; /* Para texto dentro da barra, se necessário */
+    line-height: 22px;
     color: white;
-    font-size: 12px;
+    font-size: 0.8em;
     font-weight: bold;
 }
 
 .percentage-text {
-    margin-top: 8px;
-    font-size: 1.1em;
-    font-weight: 700;
-    color: #333;
+    margin-top: 10px;
+    font-size: 1.15em; /* Aumentado um pouco para destaque */
+    font-weight: 700; /* Mais forte */
+    color: #333; /* Cor padrão */
 }
 
 .analysis-result-text {
     margin-top: 10px;
     font-size: 0.9em;
-    color: #555;
-    text-align: left;
-    line-height: 1.4;
-    max-height: 100px;
+    color: #4a4a4a;
+    text-align: left; /* Mantido */
+    line-height: 1.5;
+    min-height: 60px; /* Altura mínima para manter o layout */
+    max-height: 160px; /* Altura máxima antes de scroll */
     overflow-y: auto;
-    padding: 5px;
-    background-color: #fff;
-    border-radius: 4px;
-    border: 1px solid #e0e0e0;
+    padding: 10px;
+    background-color: #ffffff; /* Fundo branco para contraste */
+    border-radius: 6px;
+    border: 1px solid #d1d8e0; /* Borda sutil */
+    width: 100%; /* Ocupar largura total */
+    box-sizing: border-box; /* Para padding não afetar largura total */
 }
 
-.dark-mode body {
-    background-color: #1e1e1e;
-    color: #e0e0e0;
-}
 
-.dark-mode h1 {
-    color: #ffffff;
-}
-
-.dark-mode button {
-    background-color: #007bff;
-}
-.dark-mode button:hover {
-    background-color: #0056b3;
-}
-
-.dark-mode .gauge-bar-track {
-    background-color: #424242;
-}
-
-.dark-mode .percentage-text {
-    color: #ffffff;
-}
-
-.dark-mode .analysis-result-text {
-    background-color: #2c2c2c;
-    border-color: #424242;
-    color: #d0d0d0;
-}
-
-.popup-footer {
-    margin-top: 25px;
-    padding-top: 10px;
-    border-top: 1px solid #d1d8e0;
+.config-section {
+    padding: 20px;
+    padding-top: 45px; /* Espaço para o botão de voltar */
+    border: none; /* Removido border, pois já tem fundo */
+    border-radius: 0; /* Sem borda arredondada para tela cheia */
+    margin-bottom: 0; /* Sem margem inferior */
+    background-color: #ffffff; /* Fundo branco */
     width: 100%;
-    font-size: 0.7em;
-    color: #777;
+    height: 100%; /* Ocupar toda a altura do popup */
+    box-sizing: border-box;
+    position: absolute; /* Posição absoluta para sobrepor */
+    top: 0;
+    left: 0;
+    z-index: 200; /* Acima da tela principal */
+    display: flex;
+    flex-direction: column;
+    /* justify-content: center; */ /* Comentado para permitir scroll se necessário */
+}
+
+.config-section h2 {
+    margin-top: 0; /* Sem margem superior para o título */
+    color: #2c3e50;
+    font-size: 1.3em;
+    margin-bottom: 15px;
+    font-weight: 500;
     text-align: center;
 }
 
-.popup-footer p {
-    margin: 3px 0;
-    line-height: 1.2;
+.config-section p {
+    font-size: 0.9em;
+    color: #555e68;
+    margin-bottom: 20px;
+    line-height: 1.4;
+    text-align: center;
 }
 
-.dark-mode .popup-footer {
-    border-top: 1px solid #424242;
-    color: #aaa;
+.api-key-input-group {
+    margin-bottom: 20px;
+    text-align: left;
+    width: 100%;
+    max-width: 400px; /* Limite para inputs em telas maiores, se aplicável */
+    margin-left: auto;
+    margin-right: auto;
 }
+
+/* Dark Mode Styles (Início) - Adapte conforme necessário */
+.dark-mode body {
+    background-color: #212529;
+    color: #dee2e6;
+}
+
+.dark-mode .settings-icon,
+.dark-mode .back-button {
+    color: #adb5bd;
+}
+.dark-mode .settings-icon:hover,
+.dark-mode .back-button:hover {
+    color: #f8f9fa;
+}
+
+.dark-mode h1,
+.dark-mode .config-section h2,
+.dark-mode .api-key-input-group label {
+    color: #f8f9fa;
+}
+
+.dark-mode #scrapeButton,
+.dark-mode #saveApiKeysButton {
+    background-color: #0d6efd; /* Azul mais vibrante para dark mode */
+}
+.dark-mode #scrapeButton:hover,
+.dark-mode #saveApiKeysButton:hover {
+    background-color: #0b5ed7;
+}
+
+.dark-mode .get-key-button {
+    background-color: #495057;
+    color: #f8f9fa;
+}
+.dark-mode .get-key-button:hover {
+    background-color: #343a40;
+}
+
+.dark-mode .gauge-bar-track {
+    background-color: #495057; /* Track mais escura */
+}
+
+.dark-mode .percentage-text {
+    color: #f8f9fa; /* Texto da porcentagem claro */
+}
+
+/* Cor da barra de progresso no dark mode será definida por JS (hsl) */
+
+.dark-mode .analysis-result-text {
+    background-color: #343a40; /* Fundo do texto de análise escuro */
+    border-color: #495057;
+    color: #dee2e6; /* Texto claro */
+}
+.dark-mode .config-section {
+    background-color: #212529; /* Fundo da seção de config escuro */
+    border-color: #495057;
+}
+
+
+.api-key-input-group label {
+    display: flex; /* Para alinhar ícone e texto */
+    align-items: center; /* Alinhamento vertical */
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #34495e;
+    font-size: 0.95em;
+}
+
+.api-key-input-group input[type="text"],
+.api-key-input-group input[type="password"] { /* Adicionado type="password" para consistência futura */
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    box-sizing: border-box;
+    font-size: 0.9em;
+    margin-bottom: 8px; /* Espaçamento entre input e botão "Obter Chave" */
+}
+
+.dark-mode .api-key-input-group input[type="text"],
+.dark-mode .api-key-input-group input[type="password"] {
+    background-color: #495057;
+    border-color: #6c757d;
+    color: #f8f9fa;
+}
+.dark-mode .api-key-input-group input[type="text"]::placeholder,
+.dark-mode .api-key-input-group input[type="password"]::placeholder {
+    color: #adb5bd;
+}
+
+.tutorial-icon {
+    display: inline-flex; /* Para se comportar como um ícone inline */
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-left: 8px;
+    background-color: #6c757d; /* Cinza neutro */
+    color: #ffffff;
+    font-size: 0.8em;
+    font-weight: bold;
+    border-radius: 50%; /* Círculo */
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    user-select: none; /* Evitar seleção de texto do '?' */
+}
+
+.tutorial-icon:hover {
+    background-color: #5a6268; /* Mais escuro no hover */
+}
+
+.dark-mode .tutorial-icon {
+    background-color: #495057;
+    color: #f8f9fa;
+}
+.dark-mode .tutorial-icon:hover {
+    background-color: #343a40;
+}
+
+.get-key-button {
+    padding: 8px 14px;
+    font-size: 0.85em;
+    background-color: #6c757d; /* Cor similar ao tutorial icon */
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 0; /* Ajustado, pois o input já tem margin-bottom */
+    display: block; /* Para ocupar a largura total */
+    width: 100%;
+    box-sizing: border-box;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.get-key-button:hover {
+    background-color: #5a6268;
+}
+
+#saveApiKeysButton {
+    background-color: #28a745; /* Verde para salvar */
+    color: white;
+    padding: 12px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 500;
+    width: 100%; /* Largura total */
+    transition: background-color 0.2s ease-in-out;
+    margin-top: 10px; /* Espaço acima do botão salvar */
+}
+
+#saveApiKeysButton:hover {
+    background-color: #218838; /* Verde mais escuro no hover */
+}
+
+.status-message {
+    margin-top: 15px;
+    font-size: 0.9em;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.status-message.error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+}
+
+.status-message.success {
+    color: #155724;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+}
+
+.dark-mode .status-message.error {
+    color: #f5c2c7;
+    background-color: #842029;
+    border-color: #a0444b;
+}
+
+.dark-mode .status-message.success {
+    color: #badbcc;
+    background-color: #0f5132;
+    border-color: #2b855a;
+}
+
+
+.hidden {
+    display: none !important;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed; /* Para cobrir a tela inteira */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Fundo semi-transparente */
+    display: flex; /* Para centralizar o conteúdo do modal */
+    align-items: center;
+    justify-content: center;
+    z-index: 1000; /* Acima de tudo */
+    padding: 15px; /* Espaçamento para não colar nas bordas da tela */
+    box-sizing: border-box;
+}
+
+.modal-content {
+    background-color: #ffffff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    width: 95%; /* Largura responsiva */
+    max-width: 400px; /* Largura máxima */
+    max-height: 90vh; /* Altura máxima responsiva */
+    overflow-y: auto; /* Scroll se o conteúdo for maior */
+    position: relative; /* Para posicionar o botão de fechar */
+    text-align: left; /* Alinhamento padrão do texto */
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #2c3e50;
+    font-size: 1.2em;
+}
+
+.tutorial-body-content { /* Mantido para o modal de tutorial existente */
+    font-size: 0.9em;
+    line-height: 1.6;
+    color: #333;
+}
+
+.tutorial-body-content p {
+    margin-bottom: 10px;
+}
+
+.tutorial-body-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.modal-close-button {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.8em;
+    color: #888;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    width: auto; /* Reset para botões de fechar */
+    margin: 0; /* Reset para botões de fechar */
+}
+
+.modal-close-button:hover {
+    color: #333;
+    background: none; /* Reset para botões de fechar */
+}
+
+.dark-mode .modal-content {
+    background-color: #343a40;
+    color: #dee2e6;
+}
+
+.dark-mode .modal-content h3 {
+    color: #f8f9fa;
+}
+
+.dark-mode .tutorial-body-content {
+    color: #dee2e6;
+}
+
+.dark-mode .modal-close-button {
+    color: #adb5bd;
+}
+
+.dark-mode .modal-close-button:hover {
+    color: #f8f9fa;
+}
+/* Fim dos estilos do Dark Mode */
+
+
+/* --- Início: Estilos para o Novo Modal de Cache --- */
+#cachePromptModal .modal-content {
+    /* Herda a maioria dos estilos de .modal-content */
+    text-align: center; /* Centralizar texto e botões no prompt de cache */
+}
+
+#cachePromptModal h3 {
+    font-size: 1.2em;
+    margin-bottom: 15px;
+}
+
+#cachePromptDetails {
+    font-size: 0.95em;
+    margin-bottom: 25px;
+    line-height: 1.5;
+    color: #4a4a4a;
+}
+
+.dark-mode #cachePromptDetails {
+    color: #c7c7c7;
+}
+
+.cache-prompt-actions {
+    display: flex;
+    justify-content: space-around; /* Espaçar os botões */
+    gap: 10px; /* Espaço entre os botões */
+    margin-top: 10px;
+}
+
+.action-button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    flex-grow: 1; /* Para que os botões ocupem espaço disponível */
+}
+
+.action-button:hover {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+#useCachedResultButton {
+    background-color: #6c757d; /* Cinza, secundário */
+    color: white;
+}
+
+#useCachedResultButton:hover {
+    background-color: #5a6268;
+}
+
+.dark-mode #useCachedResultButton {
+    background-color: #5a6268;
+}
+.dark-mode #useCachedResultButton:hover {
+    background-color: #495057;
+}
+
+#reanalyzeButton { /* Botão primário de ação */
+    background-color: #3498db; /* Azul, primário */
+    color: white;
+}
+
+#reanalyzeButton:hover {
+    background-color: #2980b9;
+}
+
+.dark-mode #reanalyzeButton {
+    background-color: #0d6efd;
+}
+.dark-mode #reanalyzeButton:hover {
+    background-color: #0b5ed7;
+}
+
+/* --- Fim: Estilos para o Novo Modal de Cache --- */
