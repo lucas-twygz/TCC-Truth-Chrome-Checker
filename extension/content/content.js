@@ -10,7 +10,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const articleBody = document.createElement("div");
     articleBody.innerHTML = doc.content;
 
-    // 🔍 Filtros mais agressivos para remover seções fora da notícia principal
     const selectorsToRemove = [
       "figure",
       "video",
@@ -36,12 +35,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       articleBody.querySelectorAll(selector).forEach(el => el.remove());
     });
 
-    // 🧽 Remove elementos repetidos (por exemplo: "Leia também" em parágrafos)
     articleBody.querySelectorAll("p").forEach(p => {
       if (p.textContent.trim().length < 30) p.remove();
     });
 
-    // 🧹 Texto final limpo
     const cleanText = articleBody.textContent
       .replace(/\\s+/g, " ")
       .replace(/\\n{2,}/g, "\\n")
