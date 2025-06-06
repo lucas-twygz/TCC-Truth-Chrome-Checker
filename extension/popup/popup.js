@@ -1,6 +1,9 @@
 const GEMINI_API_KEY_STORAGE = 'truthCheckerGeminiApiKey';
 const CUSTOM_SEARCH_API_KEY_STORAGE = 'truthCheckerCustomSearchApiKey';
 const SEARCH_ENGINE_ID_STORAGE = 'truthCheckerSearchEngineId';
+const DRAFT_GEMINI_API_KEY = 'draft_geminiApiKey';
+const DRAFT_CUSTOM_SEARCH_API_KEY = 'draft_customSearchApiKey';
+const DRAFT_SEARCH_ENGINE_ID = 'draft_searchEngineId';
 
 let currentCachedData = null;
 let currentAnalysisParams = null;
@@ -77,10 +80,12 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        chrome.storage.local.get([GEMINI_API_KEY_STORAGE, CUSTOM_SEARCH_API_KEY_STORAGE, SEARCH_ENGINE_ID_STORAGE], function(keys) {
-            if (geminiApiKeyInput) geminiApiKeyInput.value = keys[GEMINI_API_KEY_STORAGE] || '';
-            if (customSearchApiKeyInput) customSearchApiKeyInput.value = keys[CUSTOM_SEARCH_API_KEY_STORAGE] || '';
-            if (programmableSearchEngineIdInput) programmableSearchEngineIdInput.value = keys[SEARCH_ENGINE_ID_STORAGE] || '';
+        chrome.storage.session.get([DRAFT_GEMINI_API_KEY, DRAFT_CUSTOM_SEARCH_API_KEY, DRAFT_SEARCH_ENGINE_ID], (drafts) => {
+            chrome.storage.local.get([GEMINI_API_KEY_STORAGE, CUSTOM_SEARCH_API_KEY_STORAGE, SEARCH_ENGINE_ID_STORAGE], (savedKeys) => {
+                if (geminiApiKeyInput) geminiApiKeyInput.value = drafts[DRAFT_GEMINI_API_KEY] || savedKeys[GEMINI_API_KEY_STORAGE] || '';
+                if (customSearchApiKeyInput) customSearchApiKeyInput.value = drafts[DRAFT_CUSTOM_SEARCH_API_KEY] || savedKeys[CUSTOM_SEARCH_API_KEY_STORAGE] || '';
+                if (programmableSearchEngineIdInput) programmableSearchEngineIdInput.value = drafts[DRAFT_SEARCH_ENGINE_ID] || savedKeys[SEARCH_ENGINE_ID_STORAGE] || '';
+            });
         });
     }
 
@@ -99,6 +104,22 @@ document.addEventListener("DOMContentLoaded", function () {
             showConfigScreen('Por favor, configure suas chaves de API para usar a extensão.');
         }
     });
+
+    if (geminiApiKeyInput) {
+        geminiApiKeyInput.addEventListener('input', () => {
+            chrome.storage.session.set({ [DRAFT_GEMINI_API_KEY]: geminiApiKeyInput.value });
+        });
+    }
+    if (customSearchApiKeyInput) {
+        customSearchApiKeyInput.addEventListener('input', () => {
+            chrome.storage.session.set({ [DRAFT_CUSTOM_SEARCH_API_KEY]: customSearchApiKeyInput.value });
+        });
+    }
+    if (programmableSearchEngineIdInput) {
+        programmableSearchEngineIdInput.addEventListener('input', () => {
+            chrome.storage.session.set({ [DRAFT_SEARCH_ENGINE_ID]: programmableSearchEngineIdInput.value });
+        });
+    }
 
     if (getGeminiKeyButton) getGeminiKeyButton.addEventListener('click', () => chrome.tabs.create({ url: 'https://aistudio.google.com/app/apikey?hl=pt-br' }));
     if (getCustomSearchKeyButton) getCustomSearchKeyButton.addEventListener('click', () => chrome.tabs.create({ url: 'https://developers.google.com/custom-search/v1/overview?hl=pt-br#api_key' }));
@@ -129,11 +150,17 @@ document.addEventListener("DOMContentLoaded", function () {
                         configStatusElement.className = 'status-message error';
                     }
                 } else {
-                    if (configStatusElement) {
-                        configStatusElement.textContent = 'Chaves salvas com sucesso!';
-                        configStatusElement.className = 'status-message success';
-                    }
-                    setTimeout(() => showMainScreen(), 1500);
+                    chrome.storage.session.remove([
+                        DRAFT_GEMINI_API_KEY,
+                        DRAFT_CUSTOM_SEARCH_API_KEY,
+                        DRAFT_SEARCH_ENGINE_ID
+                    ], () => {
+                        if (configStatusElement) {
+                            configStatusElement.textContent = 'Chaves salvas com sucesso!';
+                            configStatusElement.className = 'status-message success';
+                        }
+                        setTimeout(() => showMainScreen(), 1500);
+                    });
                 }
             });
         });
@@ -200,60 +227,18 @@ document.addEventListener("DOMContentLoaded", function () {
     if (tutorialModal) tutorialModal.addEventListener('click', (event) => { if (event.target === tutorialModal) _closeTutorialModal(); });
     
     const tutorials = {};
-        tutorials.gemini = {
-            title: "Como Obter a Chave API Gemini",
-            content: `
-                <p>Siga estes passos para obter sua Chave API do Gemini:</p>
-                <ol>
-                    <li>Acesse o <a href="https://aistudio.google.com/app/apikey?hl=pt-br" target="_blank" rel="noopener noreferrer">Google AI Studio</a>.</li>
-                    <li>Faça login com sua conta Google, se solicitado.</li>
-                    <li>Clique em "<strong>+ Criar chave de API</strong>".</li>
-                </ol>
-                <p><img src="../assets/gemini_create_key.gif" alt="Criando a chave API Gemini no AI Studio"></p>
-                <ol start="4">
-                    <li>Copie a chave API gerada.</li>
-                    <li>Cole a chave no campo "Chave API Gemini" na extensão.</li>
-                </ol>
-            `
-        };
-        tutorials.customSearch = {
-            title: "Como Obter a Chave API Custom Search",
-            content: `
-                <p>Para obter sua Chave API do Custom Search (Pesquisa Personalizada do Google):</p>
-                <ol>
-                    <li>Acesse o <a href="https://developers.google.com/custom-search/v1/overview?hl=pt-br#api_key" target="_blank" rel="noopener noreferrer">Google Developers (Custom Search API)</a>.</li>
-                    <li>Clique em "<strong>Acessar uma chave</strong>" (ou "Get a Key").</li>
-                    <li>Selecione ou crie um projeto no Google Cloud Platform.</li>
-                    <li>Ative a "Custom Search API" para o projeto selecionado, se ainda não estiver ativa.</li>
-                    <li>No painel de "Credenciais" do seu projeto, crie uma nova chave de API ou use uma existente que esteja habilitada para a Custom Search API.</li>
-                    <li>Copie a chave.</li>
-                    <li>Cole a chave no campo "Chave API Custom Search" na extensão.</li>
-                </ol>
-                <p><img src="../assets/custom_search_get_key.gif" alt="Obtendo a chave API Custom Search"></p>
-                <p><em>Lembre-se de restringir sua chave de API no Google Cloud Console para maior segurança.</em></p>
-            `
-        };
-        tutorials.cxId = {
-            title: "Como Obter o ID do Mecanismo de Pesquisa (CX ID)",
-            content: `
-                <p>Para criar um Mecanismo de Pesquisa Programável e obter seu ID (CX ID):</p>
-                <ol>
-                    <li>Acesse o <a href="https://programmablesearchengine.google.com/controlpanel/all?hl=pt-br" target="_blank" rel="noopener noreferrer">Painel de Controle do Mecanismo de Pesquisa Programável</a>.</li>
-                    <li>Clique em "<strong>Adicionar</strong>".</li>
-                    <li>Em "Nome", você pode colocar algo como "TCC_Checker_Search".</li>
-                    <li>Em "O que pesquisar?", selecione "<strong>Pesquisar em toda a web</strong>".</li>
-                    <li>Ative a opção "Pesquisa de imagens" se desejar (opcional).</li>
-                    <li>Ative a opção "SafeSearch" se desejar (recomendado).</li>
-                    <li>Clique em "<strong>Criar</strong>".</li>
-                    <li>Após a criação, você será levado ao painel do seu mecanismo.</li>
-                    <li>Na seção "<strong>Informações básicas</strong>" da aba "Visão Geral", você encontrará o "<strong>ID do mecanismo de pesquisa</strong>". Copie este ID.</li>
-                </ol>
-                <p><img src="../assets/programmable_search_cx_id.gif" alt="Obtendo o ID do Mecanismo de Pesquisa"></p>
-                <ol start="9">
-                    <li>Cole o ID no campo "ID do Mecanismo de Pesquisa" na extensão.</li>
-                </ol>
-            `
-        };
+    tutorials.gemini = {
+        title: "Como Obter a Chave API do Gemini",
+        content: `<p>Siga estes passos para obter sua Chave API do Gemini:</p><ol><li>Acesse o <a href="https://aistudio.google.com/app/apikey?hl=pt-br" target="_blank" rel="noopener noreferrer">Google AI Studio</a>.</li><li>Faça login com sua conta Google, se necessário.</li><li>Clique em <strong>"+ Criar chave de API"</strong>.</li></ol><div class="tutorial-step"><img src="../assets/tutorial/gemini_criar_chave.jpeg" alt="Criar chave API Gemini"></div><ol start="4"><li>Copie a chave API gerada.</li><li>Cole a chave no campo <strong>"Chave API Gemini"</strong> na extensão.</li></ol>`
+    };
+    tutorials.customSearch = {
+        title: "Como Obter a Chave API Custom Search",
+        content: `<p>Para obter sua Chave API do Custom Search (Pesquisa Personalizada do Google):</p><ol><li>Acesse o <a href="https://developers.google.com/custom-search/v1/overview?hl=pt-br#api_key" target="_blank" rel="noopener noreferrer">Google Developers (Custom Search API)</a>.</li><li>Clique em <strong>"Acessar uma chave"</strong>.</li></ol><div class="tutorial-step"><img src="../assets/tutorial/custom_search_acessar_chave.jpeg" alt="Acessar chave Custom Search API"></div><ol start="3"><li>Selecione o projeto <strong>"Gemini API"</strong>.</li><li>Selecione <strong>"Yes"</strong> e clique em <strong>"NEXT"</strong>.</li></ol><div class="tutorial-step"><img src="../assets/tutorial/custom_search_confirmar_projeto.jpeg" alt="Confirmar projeto Gemini API"></div><ol start="5"><li>Clique em <strong>"Show Key"</strong> e copie a chave.</li></ol><div class="tutorial-step"><img src="../assets/tutorial/custom_search_mostrar_chave.jpeg" alt="Mostrar chave da API"></div><ol start="6"><li>Cole a chave no campo <strong>"Chave API Custom Search"</strong> na extensão.</li></ol>`
+    };
+    tutorials.cxId = {
+        title: "Como Obter o ID do Mecanismo de Pesquisa (CX ID)",
+        content: `<p>Para criar um Mecanismo de Pesquisa Programável e obter seu ID (CX ID):</p><ol><li>Acesse o <a href="https://programmablesearchengine.google.com/controlpanel/all?hl=pt-br" target="_blank" rel="noopener noreferrer">Painel do Mecanismo de Pesquisa</a>.</li><li>Clique em <strong>"Adicionar"</strong>.</li><li>Em <strong>"Nome"</strong>, coloque algo como <strong>"TCC"</strong>.</li><li>Em <strong>"O que pesquisar?"</strong>, selecione <strong>"Pesquisar em toda a web"</strong>.</li><li>Clique em <strong>"Criar"</strong>.</li></ol><div class="tutorial-step"><img src="../assets/tutorial/programmable_search_criar.jpeg" alt="Criar mecanismo de pesquisa"></div><ol start="6"><li>Clique em <strong>"Personalizar"</strong>.</li><li>Na seção <strong>"Informações básicas"</strong>, copie o <strong>"ID do mecanismo de pesquisa"</strong>.</li></ol><div class="tutorial-step"><img src="../assets/tutorial/programmable_search_id.jpeg" alt="ID do Mecanismo de Pesquisa"></div><ol start="8"><li>Cole o ID no campo <strong>"ID do Mecanismo de Pesquisa (CX ID)"</strong> na extensão.</li></ol>`
+    };
 
     if (geminiTutorialIcon) geminiTutorialIcon.addEventListener('click', (event) => { event.stopPropagation(); openTutorialModal(tutorials.gemini.title, tutorials.gemini.content); });
     if (customSearchTutorialIcon) customSearchTutorialIcon.addEventListener('click', (event) => { event.stopPropagation(); openTutorialModal(tutorials.customSearch.title, tutorials.customSearch.content); });
@@ -491,7 +476,7 @@ function displayAnalysisResults(responseTextFromServer, isError = false) {
                 cleanedResponseText = "A análise detalhada está contida na porcentagem acima ou não foram fornecidos detalhes adicionais.";
             }
         } else {
-            const genericPercentagePattern = new RegExp(`^(Nova chance de ser verdadeiro:|Chance de ser verdadeiro:|Probabilidade de ser verdadeiro:)\\s*${percentage}%\\s*(Verdadeiro)?\\s*, "im"`);
+            const genericPercentagePattern = new RegExp(`^(Nova chance de ser verdadeiro:|Chance de ser verdadeiro:|Probabilidade de ser verdadeiro:)\\s*${percentage}%\\s*(Verdadeiro)?\\s*`, "im");
             let tempCleaned = cleanedResponseText.replace(genericPercentagePattern, '').trim();
             if (tempCleaned !== cleanedResponseText && tempCleaned !== "") {
                 cleanedResponseText = tempCleaned;
