@@ -54,8 +54,7 @@ O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornec
       # ID do Mecanismo de Pesquisa Programável (obtido no Painel do Programmable Search Engine)
       GOOGLE_CSE_ID=SEU_ID_MECANISMO_PESQUISA_AQUI
       ```
-   
-    (Nota: O README original mencionava `API_KEY` duas vezes com nomes diferentes. Clarificado para os usos corretos.)
+  
 5.  Inicie o servidor backend:
     ```bash
     npm start
@@ -64,7 +63,7 @@ O sistema utiliza a API do **Google Gemini** para processar o conteúdo e fornec
     ```bash
     node server/server.js 
     ```
-    (Nota: Ajustado o caminho para `server/server.js` conforme a estrutura.)
+   
 6.  Carregue a extensão no Chrome (ou navegador baseado em Chromium):
     - Acesse `chrome://extensions/`
     - Ative o `Modo de desenvolvedor` (geralmente um interruptor no canto superior direito).
