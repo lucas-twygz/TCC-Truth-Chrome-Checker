@@ -5,12 +5,15 @@ const path = require("path");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const googleNewsSearch = require("./googleNewsSearch");
 const { URL } = require('url');
+const imageVerificationRouter = require('./imageVerification');
+
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json({ limit: '5mb' }));
 app.use(cors());
+app.use('/', imageVerificationRouter);
 
 const SAVE_DIR = path.join(__dirname, "captured_pages");
 if (!fs.existsSync(SAVE_DIR)) fs.mkdirSync(SAVE_DIR);

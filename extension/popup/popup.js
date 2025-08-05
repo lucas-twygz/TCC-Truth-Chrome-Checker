@@ -35,6 +35,93 @@ document.addEventListener("DOMContentLoaded", function () {
     const mainPageContainer = document.querySelector('.container.main-page');
     const configSection = document.getElementById('configSection');
 
+    // --- INTEGRAÇÃO ANÁLISE DE IMAGEM/PRINT (SEPARADO) ---
+    const selectImageButton = document.getElementById('selectImageButton');
+    const analyzeImageButton = document.getElementById('analyzeImageButton');
+    const imageInput = document.getElementById('imageInput');
+    const selectedImageName = document.getElementById('selectedImageName');
+    const imagePreviewBox = document.getElementById('imagePreviewBox');
+    const imagePreview = document.getElementById('imagePreview');
+    const imageAnalysisResultBox = document.getElementById('imageAnalysisResultBox');
+    const imageAnalysisResultText = document.getElementById('imageAnalysisResultText');
+    let selectedImageFile = null;
+
+    if (selectImageButton && imageInput) {
+        selectImageButton.addEventListener('click', () => {
+            imageInput.value = '';
+            imageInput.click();
+        });
+    }
+
+    if (imageInput) {
+        imageInput.addEventListener('change', (e) => {
+            if (imageInput.files && imageInput.files[0]) {
+                selectedImageFile = imageInput.files[0];
+                selectedImageName.textContent = selectedImageFile.name;
+                analyzeImageButton.disabled = false;
+                // Pré-visualização
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    if (imagePreview) imagePreview.src = ev.target.result;
+                    if (imagePreviewBox) imagePreviewBox.style.display = 'block';
+                };
+                reader.readAsDataURL(selectedImageFile);
+            } else {
+                selectedImageFile = null;
+                selectedImageName.textContent = '';
+                analyzeImageButton.disabled = true;
+                if (imagePreviewBox) imagePreviewBox.style.display = 'none';
+            }
+        });
+    }
+
+    if (analyzeImageButton) {
+        analyzeImageButton.addEventListener('click', () => {
+            analyzeSelectedImage();
+        });
+    }
+
+
+    async function analyzeSelectedImage() {
+        if (!selectedImageFile) return;
+        chrome.storage.local.get([GEMINI_API_KEY_STORAGE], async function(result) {
+            const apiKeyGemini = result[GEMINI_API_KEY_STORAGE] || '';
+            if (!apiKeyGemini) {
+                showImageAnalysisResult('Configure a chave API Gemini antes de analisar a imagem.', false);
+                return;
+            }
+            showImageAnalysisResult('Analisando imagem...', true);
+            analyzeImageButton.disabled = true;
+            const formData = new FormData();
+            formData.append('image', selectedImageFile);
+            formData.append('apiKeyGemini', apiKeyGemini);
+            formData.append('context', '');
+            try {
+                const response = await fetch('http://localhost:3000/verify-image', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showImageAnalysisResult(data.analysis, true);
+                } else {
+                    showImageAnalysisResult(data.error || 'Erro ao analisar imagem.', false);
+                }
+            } catch (err) {
+                showImageAnalysisResult('Erro ao conectar ao servidor de análise.', false);
+            }
+            analyzeImageButton.disabled = false;
+        });
+    }
+
+    function showImageAnalysisResult(message, success) {
+        if (imageAnalysisResultBox && imageAnalysisResultText) {
+            imageAnalysisResultBox.style.display = 'block';
+            imageAnalysisResultText.textContent = message;
+            imageAnalysisResultText.style.color = success ? '#1a7f37' : '#b91c1c';
+        }
+    }
+
     const geminiApiKeyInput = document.getElementById('geminiApiKey');
     const customSearchApiKeyInput = document.getElementById('customSearchApiKey');
     const programmableSearchEngineIdInput = document.getElementById('programmableSearchEngineId');

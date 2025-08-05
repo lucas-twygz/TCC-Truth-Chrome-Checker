@@ -16,6 +16,24 @@
         <div id="analysisSection" class="">
             <button id="scrapeButton">Analisar Página Atual</button>
 
+
+            <h3 style="margin: 12px 0 8px 0; font-weight: 500;">ou</h3>
+
+
+            <div id="imageAnalysisSection" style="margin-top: 8px;">
+                <label for="imageInput" class="custom-file-label">Selecionar Imagem</label>
+                <input type="file" id="imageInput" accept="image/*" class="custom-file-input" />
+                <button id="analyzeImageButton" disabled>Analisar Imagem</button>
+                <span id="selectedImageName" style="font-size: 0.9em; margin-left: 8px;"></span>
+                <div id="imagePreviewBox" style="margin-top:8px; display:none;">
+                    <img id="imagePreview" src="" alt="Pré-visualização" style="max-width: 100%; max-height: 120px; border: 1px solid #ccc; border-radius: 4px;" />
+                </div>
+                <div id="imageAnalysisResultBox" style="margin-top:10px; display:none;">
+                    <strong>Resultado da Imagem:</strong>
+                    <p id="imageAnalysisResultText" class="analysis-result-text"></p>
+                </div>
+            </div>
+
             <div class="gauge-container">
                 <div class="gauge-bar-track">
                     <div id="gaugeBar" class="gauge-bar-fill"></div>
@@ -24,6 +42,7 @@
             </div>
 
             <p id="analysisResultText" class="analysis-result-text">Clique em "Analisar Página Atual" para começar.</p>
+
         </div>
     </div>
 
