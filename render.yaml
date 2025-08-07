@@ -1,0 +1,13 @@
+# A "blueprint" para implantar seu aplicativo no Render.
+services:
+  - type: web
+    name: tcc-server
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    # Declaramos apenas as chaves, sem expor os valores.
+    # Os valores serão configurados de forma segura no painel do Render.
+    envVars:
+      - key: API_KEY
+      - key: GOOGLE_API_KEY
+      - key: GOOGLE_CSE_ID
