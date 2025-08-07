@@ -4,7 +4,7 @@ services:
     name: tcc-server
     env: node
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: node extension/server/server.js
     # Declaramos apenas as chaves, sem expor os valores.
     # Os valores serão configurados de forma segura no painel do Render.
     envVars:
