@@ -1,248 +1,7 @@
-const GEMINI_API_KEY_STORAGE = 'truthCheckerGeminiApiKey';
-const CUSTOM_SEARCH_API_KEY_STORAGE = 'truthCheckerCustomSearchApiKey';
-const SEARCH_ENGINE_ID_STORAGE = 'truthCheckerSearchEngineId';
-const DRAFT_GEMINI_API_KEY = 'draft_geminiApiKey';
-const DRAFT_CUSTOM_SEARCH_API_KEY = 'draft_customSearchApiKey';
-const DRAFT_SEARCH_ENGINE_ID = 'draft_searchEngineId';
-
-let currentCachedData = null;
-let currentAnalysisParams = null;
-
-function showCachePromptModal(cachedDataFromServer) {
-    const cachePromptModal = document.getElementById('cachePromptModal');
-    const mainPageContainer = document.querySelector('.container.main-page');
-    const cachePromptDetailsElement = document.getElementById('cachePromptDetails');
-
-    currentCachedData = cachedDataFromServer;
-    if (cachePromptDetailsElement) {
-        const date = new Date(cachedDataFromServer.timestamp).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'});
-        let previewText = cachedDataFromServer.response || "Resultado anterior não disponível para visualização.";
-        if (previewText.length > 100) previewText = previewText.substring(0, 100) + "...";
-        cachePromptDetailsElement.textContent = `Analisado em ${date}. Resultado: "${previewText}". Deseja usar este resultado ou analisar novamente?`;
-    }
-    if (cachePromptModal) cachePromptModal.classList.remove('hidden');
-    if (mainPageContainer) mainPageContainer.classList.add('hidden');
-}
-
-function hideCachePromptModal() {
-    const cachePromptModal = document.getElementById('cachePromptModal');
-    const mainPageContainer = document.querySelector('.container.main-page');
-    if (cachePromptModal) cachePromptModal.classList.add('hidden');
-    if (mainPageContainer) mainPageContainer.classList.remove('hidden');
-}
-
 document.addEventListener("DOMContentLoaded", function () {
-    const mainPageContainer = document.querySelector('.container.main-page');
-    const configSection = document.getElementById('configSection');
-
-    const geminiApiKeyInput = document.getElementById('geminiApiKey');
-    const customSearchApiKeyInput = document.getElementById('customSearchApiKey');
-    const programmableSearchEngineIdInput = document.getElementById('programmableSearchEngineId');
-
-    const getGeminiKeyButton = document.getElementById('getGeminiKey');
-    const getCustomSearchKeyButton = document.getElementById('getCustomSearchKey');
-    const getSearchEngineIdButton = document.getElementById('getSearchEngineId');
-    const saveApiKeysButton = document.getElementById('saveApiKeysButton');
-    const configStatusElement = document.getElementById('configStatus');
-
     const scrapeButton = document.getElementById("scrapeButton");
-    const settingsIcon = document.getElementById('settingsIcon');
-    const backButton = document.getElementById('backButton');
+    // ...existing code...
 
-    const tutorialModal = document.getElementById('tutorialModal');
-    const tutorialTitleElement = document.getElementById('tutorialTitle');
-    const tutorialBodyElement = document.getElementById('tutorialBody');
-    const modalCloseButton = document.getElementById('modalCloseButton');
-
-    const geminiTutorialIcon = document.getElementById('geminiTutorialIcon');
-    const customSearchTutorialIcon = document.getElementById('customSearchTutorialIcon');
-    const cxIdTutorialIcon = document.getElementById('cxIdTutorialIcon');
-
-    const useCachedResultButton = document.getElementById('useCachedResultButton');
-    const reanalyzeButton = document.getElementById('reanalyzeButton');
-    const cachePromptCloseButton = document.getElementById('cachePromptCloseButton');
-
-    function showConfigScreen(message = '') {
-        if (mainPageContainer) mainPageContainer.classList.add('hidden');
-        if (settingsIcon) settingsIcon.classList.add('hidden');
-        if (configSection) configSection.classList.remove('hidden');
-        hideCachePromptModal();
-
-        if (configStatusElement) {
-            configStatusElement.textContent = message;
-            configStatusElement.className = 'status-message';
-            if (message.toLowerCase().includes('erro') || message.toLowerCase().includes('inválid')) {
-                configStatusElement.classList.add('error');
-            } else if (message && (message.toLowerCase().includes('sucesso') || message.toLowerCase().includes('salvas'))) {
-                configStatusElement.classList.add('success');
-            } else if (message) {
-                configStatusElement.classList.remove('error', 'success');
-            }
-        }
-
-        chrome.storage.session.get([DRAFT_GEMINI_API_KEY, DRAFT_CUSTOM_SEARCH_API_KEY, DRAFT_SEARCH_ENGINE_ID], (drafts) => {
-            chrome.storage.local.get([GEMINI_API_KEY_STORAGE, CUSTOM_SEARCH_API_KEY_STORAGE, SEARCH_ENGINE_ID_STORAGE], (savedKeys) => {
-                if (geminiApiKeyInput) geminiApiKeyInput.value = drafts[DRAFT_GEMINI_API_KEY] || savedKeys[GEMINI_API_KEY_STORAGE] || '';
-                if (customSearchApiKeyInput) customSearchApiKeyInput.value = drafts[DRAFT_CUSTOM_SEARCH_API_KEY] || savedKeys[CUSTOM_SEARCH_API_KEY_STORAGE] || '';
-                if (programmableSearchEngineIdInput) programmableSearchEngineIdInput.value = drafts[DRAFT_SEARCH_ENGINE_ID] || savedKeys[SEARCH_ENGINE_ID_STORAGE] || '';
-            });
-        });
-    }
-
-    function showMainScreen() {
-        if (mainPageContainer) mainPageContainer.classList.remove('hidden');
-        if (settingsIcon) settingsIcon.classList.remove('hidden');
-        if (configSection) configSection.classList.add('hidden');
-        hideCachePromptModal();
-        resetUIState();
-    }
-
-    chrome.storage.local.get([GEMINI_API_KEY_STORAGE, CUSTOM_SEARCH_API_KEY_STORAGE, SEARCH_ENGINE_ID_STORAGE], function(result) {
-        if (result[GEMINI_API_KEY_STORAGE] && result[CUSTOM_SEARCH_API_KEY_STORAGE] && result[SEARCH_ENGINE_ID_STORAGE]) {
-            showMainScreen();
-        } else {
-            showConfigScreen('Por favor, configure suas chaves de API para usar a extensão.');
-        }
-    });
-
-    if (geminiApiKeyInput) {
-        geminiApiKeyInput.addEventListener('input', () => {
-            chrome.storage.session.set({ [DRAFT_GEMINI_API_KEY]: geminiApiKeyInput.value });
-        });
-    }
-    if (customSearchApiKeyInput) {
-        customSearchApiKeyInput.addEventListener('input', () => {
-            chrome.storage.session.set({ [DRAFT_CUSTOM_SEARCH_API_KEY]: customSearchApiKeyInput.value });
-        });
-    }
-    if (programmableSearchEngineIdInput) {
-        programmableSearchEngineIdInput.addEventListener('input', () => {
-            chrome.storage.session.set({ [DRAFT_SEARCH_ENGINE_ID]: programmableSearchEngineIdInput.value });
-        });
-    }
-
-    if (getGeminiKeyButton) getGeminiKeyButton.addEventListener('click', () => chrome.tabs.create({ url: 'https://aistudio.google.com/app/apikey?hl=pt-br' }));
-    if (getCustomSearchKeyButton) getCustomSearchKeyButton.addEventListener('click', () => chrome.tabs.create({ url: 'https://developers.google.com/custom-search/v1/overview?hl=pt-br#api_key' }));
-    if (getSearchEngineIdButton) getSearchEngineIdButton.addEventListener('click', () => chrome.tabs.create({ url: 'https://programmablesearchengine.google.com/controlpanel/all?hl=pt-br' }));
-
-    if (saveApiKeysButton) {
-        saveApiKeysButton.addEventListener('click', () => {
-            const geminiKey = geminiApiKeyInput.value.trim();
-            const customSearchKey = customSearchApiKeyInput.value.trim();
-            const searchEngineIdVal = programmableSearchEngineIdInput.value.trim();
-
-            if (!geminiKey || !customSearchKey || !searchEngineIdVal) {
-                if (configStatusElement) {
-                    configStatusElement.textContent = 'Erro: Todos os campos são obrigatórios.';
-                    configStatusElement.className = 'status-message error';
-                }
-                return;
-            }
-
-            chrome.storage.local.set({
-                [GEMINI_API_KEY_STORAGE]: geminiKey,
-                [CUSTOM_SEARCH_API_KEY_STORAGE]: customSearchKey,
-                [SEARCH_ENGINE_ID_STORAGE]: searchEngineIdVal
-            }, function() {
-                if (chrome.runtime.lastError) {
-                    if (configStatusElement) {
-                        configStatusElement.textContent = 'Erro ao salvar: ' + chrome.runtime.lastError.message;
-                        configStatusElement.className = 'status-message error';
-                    }
-                } else {
-                    chrome.storage.session.remove([
-                        DRAFT_GEMINI_API_KEY,
-                        DRAFT_CUSTOM_SEARCH_API_KEY,
-                        DRAFT_SEARCH_ENGINE_ID
-                    ], () => {
-                        if (configStatusElement) {
-                            configStatusElement.textContent = 'Chaves salvas com sucesso!';
-                            configStatusElement.className = 'status-message success';
-                        }
-                        setTimeout(() => showMainScreen(), 1500);
-                    });
-                }
-            });
-        });
-    }
-
-    if (scrapeButton) scrapeButton.addEventListener("click", () => {
-        chrome.storage.local.get([GEMINI_API_KEY_STORAGE, CUSTOM_SEARCH_API_KEY_STORAGE, SEARCH_ENGINE_ID_STORAGE], async function(keys) {
-            if (!keys[GEMINI_API_KEY_STORAGE] || !keys[CUSTOM_SEARCH_API_KEY_STORAGE] || !keys[SEARCH_ENGINE_ID_STORAGE]) {
-                showConfigScreen("Chaves de API não configuradas. Clique no ícone (⚙️) para configurar.");
-                return;
-            }
-            currentAnalysisParams = {
-                apiKeyGemini: keys[GEMINI_API_KEY_STORAGE],
-                apiKeyCustomSearch: keys[CUSTOM_SEARCH_API_KEY_STORAGE],
-                searchEngineId: keys[SEARCH_ENGINE_ID_STORAGE]
-            };
-
-            chrome.tabs.query({ active: true, currentWindow: true }, async function (tabs) {
-                if (!tabs || !tabs.length || !tabs[0]?.id) {
-                    displayAnalysisResults("Nenhuma aba ativa encontrada ou aba inválida.", true);
-                    return;
-                }
-                currentAnalysisParams.url = tabs[0].url;
-
-                if (currentAnalysisParams.url.startsWith("chrome://") || currentAnalysisParams.url.startsWith("edge://") || currentAnalysisParams.url.startsWith("about:") || currentAnalysisParams.url.startsWith("https://chrome.google.com/webstore")) {
-                    displayAnalysisResults("Não é possível analisar este tipo de página especial.", true);
-                    return;
-                }
-
-                try {
-                    chrome.tabs.sendMessage(tabs[0].id, { action: "getArticle" }, async (msg) => {
-                        if (chrome.runtime.lastError) {
-                            console.error("Erro ao enviar mensagem para o content script:", chrome.runtime.lastError.message);
-                            displayAnalysisResults("Não foi possível comunicar com a página. Tente recarregá-la.", true);
-                            return;
-                        }
-                        if (!msg || !msg.article) {
-                            displayAnalysisResults("Não foi possível extrair o conteúdo da página.", true);
-                            return;
-                        }
-                        currentAnalysisParams.content = msg.article;
-                        performAnalysisRequest(false);
-                    });
-                } catch (error) {
-                    console.error("Erro geral em scrapePage ao obter conteúdo:", error);
-                    displayAnalysisResults("Ocorreu um erro inesperado ao obter conteúdo: " + error.message, true);
-                }
-            });
-        });
-    });
-
-    if (settingsIcon) settingsIcon.addEventListener('click', () => showConfigScreen('Altere ou confirme suas chaves de API.') );
-    if (backButton) backButton.addEventListener('click', () => showMainScreen() );
-
-    function openTutorialModal(title, contentHTML) {
-        if (tutorialTitleElement) tutorialTitleElement.textContent = title;
-        if (tutorialBodyElement) tutorialBodyElement.innerHTML = contentHTML;
-        if (tutorialModal) tutorialModal.classList.remove('hidden');
-    }
-    function _closeTutorialModal() {
-        if (tutorialModal) tutorialModal.classList.add('hidden');
-    }
-    if (modalCloseButton) modalCloseButton.addEventListener('click', _closeTutorialModal);
-    if (tutorialModal) tutorialModal.addEventListener('click', (event) => { if (event.target === tutorialModal) _closeTutorialModal(); });
-    
-    const tutorials = {};
-    tutorials.gemini = {
-        title: "Como Obter a Chave API do Gemini",
-        content: `<p>Siga estes passos para obter sua Chave API do Gemini:</p><ol><li>Acesse o <a href="https://aistudio.google.com/app/apikey?hl=pt-br" target="_blank" rel="noopener noreferrer">Google AI Studio</a>.</li><li>Faça login com sua conta Google, se necessário.</li><li>Clique em <strong>"+ Criar chave de API"</strong>.</li></ol><div class="tutorial-step"><img src="../assets/tutorial/gemini_criar_chave.jpeg" alt="Criar chave API Gemini"></div><ol start="4"><li>Copie a chave API gerada.</li><li>Cole a chave no campo <strong>"Chave API Gemini"</strong> na extensão.</li></ol>`
-    };
-    tutorials.customSearch = {
-        title: "Como Obter a Chave API Custom Search",
-        content: `<p>Para obter sua Chave API do Custom Search (Pesquisa Personalizada do Google):</p><ol><li>Acesse o <a href="https://developers.google.com/custom-search/v1/overview?hl=pt-br#api_key" target="_blank" rel="noopener noreferrer">Google Developers (Custom Search API)</a>.</li><li>Clique em <strong>"Acessar uma chave"</strong>.</li></ol><div class="tutorial-step"><img src="../assets/tutorial/custom_search_acessar_chave.jpeg" alt="Acessar chave Custom Search API"></div><ol start="3"><li>Selecione o projeto <strong>"Gemini API"</strong>.</li><li>Selecione <strong>"Yes"</strong> e clique em <strong>"NEXT"</strong>.</li></ol><div class="tutorial-step"><img src="../assets/tutorial/custom_search_confirmar_projeto.jpeg" alt="Confirmar projeto Gemini API"></div><ol start="5"><li>Clique em <strong>"Show Key"</strong> e copie a chave.</li></ol><div class="tutorial-step"><img src="../assets/tutorial/custom_search_mostrar_chave.jpeg" alt="Mostrar chave da API"></div><ol start="6"><li>Cole a chave no campo <strong>"Chave API Custom Search"</strong> na extensão.</li></ol>`
-    };
-    tutorials.cxId = {
-        title: "Como Obter o ID do Mecanismo de Pesquisa (CX ID)",
-        content: `<p>Para criar um Mecanismo de Pesquisa Programável e obter seu ID (CX ID):</p><ol><li>Acesse o <a href="https://programmablesearchengine.google.com/controlpanel/all?hl=pt-br" target="_blank" rel="noopener noreferrer">Painel do Mecanismo de Pesquisa</a>.</li><li>Clique em <strong>"Adicionar"</strong>.</li><li>Em <strong>"Nome"</strong>, coloque algo como <strong>"TCC"</strong>.</li><li>Em <strong>"O que pesquisar?"</strong>, selecione <strong>"Pesquisar em toda a web"</strong>.</li><li>Clique em <strong>"Criar"</strong>.</li></ol><div class="tutorial-step"><img src="../assets/tutorial/programmable_search_criar.jpeg" alt="Criar mecanismo de pesquisa"></div><ol start="6"><li>Clique em <strong>"Personalizar"</strong>.</li><li>Na seção <strong>"Informações básicas"</strong>, copie o <strong>"ID do mecanismo de pesquisa"</strong>.</li></ol><div class="tutorial-step"><img src="../assets/tutorial/programmable_search_id.jpeg" alt="ID do Mecanismo de Pesquisa"></div><ol start="8"><li>Cole o ID no campo <strong>"ID do Mecanismo de Pesquisa (CX ID)"</strong> na extensão.</li></ol>`
-    };
-
-    if (geminiTutorialIcon) geminiTutorialIcon.addEventListener('click', (event) => { event.stopPropagation(); openTutorialModal(tutorials.gemini.title, tutorials.gemini.content); });
-    if (customSearchTutorialIcon) customSearchTutorialIcon.addEventListener('click', (event) => { event.stopPropagation(); openTutorialModal(tutorials.customSearch.title, tutorials.customSearch.content); });
-    if (cxIdTutorialIcon) cxIdTutorialIcon.addEventListener('click', (event) => { event.stopPropagation(); openTutorialModal(tutorials.cxId.title, tutorials.cxId.content); });
 
     if (cachePromptCloseButton) cachePromptCloseButton.addEventListener('click', () => {
         hideCachePromptModal();
@@ -320,8 +79,7 @@ async function performAnalysisRequest(forceReanalyze = false) {
     }
     if (analysisResultTextElement) analysisResultTextElement.textContent = '';
 
-    if (!currentAnalysisParams || !currentAnalysisParams.url || !currentAnalysisParams.content ||
-        !currentAnalysisParams.apiKeyGemini || !currentAnalysisParams.apiKeyCustomSearch || !currentAnalysisParams.searchEngineId) {
+    if (!currentAnalysisParams || !currentAnalysisParams.url || !currentAnalysisParams.content) {
         displayAnalysisResults("Erro: Parâmetros de análise ausentes. Tente novamente.", true);
         if(scrapeButton) scrapeButton.disabled = false;
         return;
@@ -330,16 +88,13 @@ async function performAnalysisRequest(forceReanalyze = false) {
     try {
         const requestBody = {
             url: currentAnalysisParams.url,
-            content: currentAnalysisParams.content,
-            apiKeyGemini: currentAnalysisParams.apiKeyGemini,
-            apiKeyCustomSearch: currentAnalysisParams.apiKeyCustomSearch,
-            searchEngineId: currentAnalysisParams.searchEngineId
+            content: currentAnalysisParams.content
         };
         if (forceReanalyze) {
             requestBody.force_reanalyze = true;
         }
 
-        const res = await fetch("http://localhost:3000/scrape", {
+        const res = await fetch("http://localhost.com:3000/scrape", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestBody)
@@ -359,17 +114,6 @@ async function performAnalysisRequest(forceReanalyze = false) {
 
         if (!res.ok) {
             let detailedErrorMessage = data.response || data.error || `Falha na análise: ${res.statusText}`;
-            if ((res.status === 400 || res.status === 401 || res.status === 403) && (detailedErrorMessage.toLowerCase().includes("api key") || detailedErrorMessage.toLowerCase().includes("chave de api") || detailedErrorMessage.toLowerCase().includes("inválid"))) {
-                detailedErrorMessage = "Problema com as chaves de API. Verifique a configuração (⚙️).";
-                document.querySelector('.container.main-page').classList.add('hidden');
-                const configSectionEl = document.getElementById('configSection');
-                if(configSectionEl) configSectionEl.classList.remove('hidden');
-                const configStatusEl = document.getElementById('configStatus');
-                if(configStatusEl) {
-                    configStatusEl.textContent = detailedErrorMessage;
-                    configStatusEl.className = 'status-message error';
-                }
-            }
             displayAnalysisResults(detailedErrorMessage, true);
             return;
         }

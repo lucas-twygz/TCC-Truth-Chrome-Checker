@@ -26,43 +26,8 @@
             <p id="analysisResultText" class="analysis-result-text">Clique em "Analisar Página Atual" para começar.</p>
         </div>
     </div>
+    
 
-    <div id="configSection" class="config-section hidden">
-        <span id="backButton" class="back-button" title="Voltar para a página principal">&#8592;</span>
-        <h2>Configurar Chaves de API</h2>
-        <p>Para analisar as páginas, você precisa fornecer suas próprias chaves de API do Google.</p>
-
-        <div class="api-key-input-group">
-            <label for="geminiApiKey">Chave API Gemini: <span class="tutorial-icon" id="geminiTutorialIcon" title="Ver tutorial Gemini API Key">?</span></label>
-            <input type="text" id="geminiApiKey" name="geminiApiKey" placeholder="Cole sua chave API Gemini aqui">
-            <button id="getGeminiKey" class="get-key-button">Obter Chave Gemini</button>
-        </div>
-
-        <div class="api-key-input-group">
-            <label for="customSearchApiKey">Chave API Custom Search: <span class="tutorial-icon" id="customSearchTutorialIcon" title="Ver tutorial Custom Search API Key">?</span></label>
-            <input type="text" id="customSearchApiKey" name="customSearchApiKey" placeholder="Cole sua chave API Custom Search aqui">
-            <button id="getCustomSearchKey" class="get-key-button">Obter Chave Custom Search</button>
-        </div>
-
-        <div class="api-key-input-group">
-            <label for="programmableSearchEngineId">ID do Mecanismo de Pesquisa: <span class="tutorial-icon" id="cxIdTutorialIcon" title="Ver tutorial ID">?</span></label>
-            <input type="text" id="programmableSearchEngineId" name="programmableSearchEngineId" placeholder="Cole seu ID aqui">
-            <button id="getSearchEngineId" class="get-key-button">Obter ID</button>
-        </div>
-
-        <button id="saveApiKeysButton">Salvar Chaves</button>
-        <p id="configStatus" class="status-message"></p>
-    </div>
-
-    <div id="tutorialModal" class="modal hidden">
-        <div class="modal-content">
-            <button class="modal-close-button" id="modalCloseButton" title="Fechar tutorial">&times;</button>
-            <h3 id="tutorialTitle"></h3>
-            <div id="tutorialBody" class="tutorial-body-content">
-                <p>Carregando tutorial...</p>
-            </div>
-        </div>
-    </div>
 
     <div id="cachePromptModal" class="modal hidden">
         <div class="modal-content">

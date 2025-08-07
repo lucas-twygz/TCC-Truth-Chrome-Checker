@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
@@ -87,64 +88,32 @@ function getFormattedTimestamp() {
 }
 
 app.post("/scrape", async (req, res) => {
-    const { url: originalUrl, content: originalContent, apiKeyGemini, apiKeyCustomSearch, searchEngineId, force_reanalyze } = req.body;
-
-    const currentDate = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-
-    if (!originalUrl || !originalContent) {
-        return res.status(400).json({ error: "URL ou conteúdo ausente.", response: "Erro: URL ou conteúdo da página ausente na requisição." });
-    }
-    if (!apiKeyGemini || !apiKeyCustomSearch || !searchEngineId) {
-        return res.status(400).json({ error: "Chaves de API ausentes.", response: "Erro: Uma ou mais chaves de API não foram fornecidas. Por favor, configure-as na extensão." });
-    }
-
-    const cacheKey = normalizeUrlForKey(originalUrl);
-    console.log(`URL original: ${originalUrl}, Chave de Cache: ${cacheKey}`);
-
-    if (!force_reanalyze && analysisCache[cacheKey]) {
-        const cachedEntry = analysisCache[cacheKey];
-        const cacheAge = Date.now() - new Date(cachedEntry.timestamp).getTime();
-        if (cacheAge < ONE_DAY_IN_MS) {
-            console.log(`Retornando resultado do cache para chave ${cacheKey} (idade: ${Math.round(cacheAge / (60 * 1000))} min).`);
-            return res.json({
-                status: "cached_recent",
-                data: cachedEntry
-            });
-        } else {
-            console.log(`Cache antigo para chave ${cacheKey}, prosseguindo com nova análise.`);
-        }
-    }
-
-    let genAIInstance;
-    let modelInstance;
-    try {
-        genAIInstance = new GoogleGenerativeAI(apiKeyGemini);
-        modelInstance = genAIInstance.getGenerativeModel({ model: "gemini-2.0-flash-001" });
-    } catch (initError) {
-        console.error("Erro ao inicializar Gemini com a chave fornecida:", initError.message);
-        return res.status(500).json({ error: "Falha ao inicializar o serviço de IA.", details: initError.message, response: "Erro: Não foi possível inicializar o serviço de IA com a Chave API Gemini fornecida. Verifique se a chave é válida." });
-    }
-
+    const { url: originalUrl, content: originalContent, force_reanalyze } = req.body;
+    // Carregar chaves das variáveis de ambiente
+    const apiKeyGemini = process.env.API_KEY_GEMINI;
+    const apiKeyCustomSearch = process.env.API_KEY_CUSTOM_SEARCH;
+    const searchEngineId = process.env.SEARCH_ENGINE_ID;
     const titleLine = originalContent.split("\n")[0].trim();
     let initialExternalEvidence = [];
     try {
         initialExternalEvidence = await googleNewsSearch.collectExternalEvidence(titleLine, apiKeyCustomSearch, searchEngineId);
     } catch (err) {
         console.error("Erro ao consultar Google CSE (inicial):", err.message);
-        if (err.message.includes("400") || err.message.includes("403") || err.message.toLowerCase().includes("api key not valid")) {
-            return res.status(400).json({ error: "Falha na API de Pesquisa Google.", details: err.message, response: "Erro: A Chave da API de Pesquisa Google ou o ID do Mecanismo de Pesquisa parecem estar inválidos. Por favor, verifique-os." });
-        }
+    }
+    let initialEvidenceText;
+    if (initialExternalEvidence && initialExternalEvidence.length > 0) {
+        initialEvidenceText = initialExternalEvidence.map(e => {
+            const confiavelLabel = e.isTrusted ? '[FONTE CONFIAVEL]' : '[OUTRA FONTE]';
+            return confiavelLabel + '\nTitulo: ' + e.title + '\nLink: ' + e.link + '\nResumo: ' + e.snippet;
+        }).join("\n\n");
+    } else {
+        initialEvidenceText = "Nenhuma fonte externa inicial foi localizada.";
     }
 
-    const initialEvidenceText = initialExternalEvidence.length
-        ? initialExternalEvidence.map(e => {
-            const confiavelLabel = e.isTrusted ? "[FONTE CONFIÁVEL]" : "[OUTRA FONTE]";
-            return `${confiavelLabel}\nTítulo: ${e.title}\nLink: ${e.link}\nResumo: ${e.snippet}`;
-        }).join("\n\n")
-        : "Nenhuma fonte externa inicial foi localizada.";
-
-    const firstAnalysisPrompt = `
-Você é um especialista em checagem de fatos. Sua função é analisar notícias e posts de rede social e determinar a probabilidade de serem VERDADEIRAS.
+    // Prompt para análise
+    const firstAnalysisPrompt = `Voce e um especialista em checagem de fatos. Sua funcao e analisar noticias e posts de rede social e determinar a probabilidade de serem VERDADEIRAS.
+    // Exemplo: Retorno simples para teste
+    return res.json({ status: "analyzed", response: initialEvidenceText });
 Você irá receber o conteúdo da página.
 
 - A data atual é "${currentDate}". Considere seu conhecimento limitado sobre eventos muito recentes.
