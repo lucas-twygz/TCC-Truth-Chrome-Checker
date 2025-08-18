@@ -1,0 +1,44 @@
+{
+    "manifest_version": 3,
+    "name": "TCC - True Chrome Checker",
+    "version": "2.0",
+    "description": "Analisa o conteúdo de páginas de notícias e estima a probabilidade de serem falsas, usando as APIs do Google Gemini e Custom Search diretamente no navegador.",
+    "permissions": [
+        "activeTab",
+        "storage",
+        "unlimitedStorage",
+        "scripting",
+        "tabs",
+        "downloads"
+    ],
+    "host_permissions": [
+        "*://*.googleapis.com/"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "lib/readability.js",
+                "content/content.js"
+            ]
+        }
+    ],
+    "action": {
+        "default_popup": "popup/popup.html",
+        "default_icon": {
+            "16": "assets/icon.png",
+            "48": "assets/icon.png",
+            "128": "assets/icon.png"
+        }
+    },
+    "icons": {
+        "16": "assets/icon.png",
+        "48": "assets/icon.png",
+        "128": "assets/icon.png"
+    },
+    "content_security_policy": {
+        "extension_pages": "script-src 'self'; connect-src 'self' https://*.googleapis.com; style-src 'self' https://fonts.googleapis.com; style-src-elem 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; object-src 'self'"
+    }
+}
