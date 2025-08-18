@@ -355,7 +355,7 @@ async function performAnalysisRequest() {
             }).join("\n\n")
             : "Nenhuma fonte externa inicial foi localizada.";
 
-        const firstAnalysisPrompt = `Você é um especialista em checagem de fatos. Sua função é analisar notícias e determinar a probabilidade de serem VERDADEIRAS.
+        const firstAnalysisPrompt = `Você é um especialista em checagem de fatos. Sua função é analisar notícias e determinar a probabilidade de serem VERDADEIRAS, não apenas no fato que foi dito, mas também se a pessoa que disse o fato realmente disse aquilo por exemplo "padre fabio de melo disse que todo brasileiro é sulamericano" o fato está correto, mas ele não disse isso.
 - A data atual é "${currentDate}".
 - Sua análise deve ter no máximo 240 caracteres.
 - Dê uma porcentagem estimada de CHANCE DE SER VERDADEIRO. (Ex: "Chance de ser verdadeiro: 70%")
