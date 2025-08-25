@@ -74,6 +74,31 @@ async function collectExternalEvidence(originalTitle, apiKeyCustomSearch, search
     return resultsWithTrustFlag.slice(0, 2);
 }
 
-module.exports = {
-    collectExternalEvidence
-};
+async function callGeminiAPI(prompt, apiKey) {
+    const model = 'gemini-1.5-flash';
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            contents: [{
+                parts: [{ text: prompt }]
+            }]
+        })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = errorData?.error?.message || "Erro desconhecido na API Gemini.";
+        throw new Error(`Erro na API Gemini (${response.status}): ${errorMessage}`);
+    }
+
+    const data = await response.json();
+    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]) {
+        throw new Error("Resposta da API Gemini em formato inesperado.");
+    }
+    return data.candidates[0].content.parts[0].text;
+}

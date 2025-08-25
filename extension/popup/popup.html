@@ -10,28 +10,35 @@
 <body>
     <span id="settingsIcon" class="settings-icon" title="Configurar Chaves de API">&#9881;</span>
 
-    <div class="container main-page">
-        <h1>Truth Chrome Checker</h1>
+    <div class="container main-container">
+        <div class="tabs">
+            <button id="analysisTabButton" class="tab-button active">Análise</button>
+            <button id="historyTabButton" class="tab-button">Histórico</button>
+        </div>
 
-        <div id="analysisSection" class="">
+        <div id="analysisSection" class="tab-content active">
+            <h1>Truth Chrome Checker</h1>
             <button id="scrapeButton">Analisar Página Atual</button>
-
             <div class="gauge-container">
                 <div class="gauge-bar-track">
                     <div id="gaugeBar" class="gauge-bar-fill"></div>
                 </div>
                 <p id="percentageText" class="percentage-text hidden">--% Verificando</p>
             </div>
-
             <p id="analysisResultText" class="analysis-result-text">Clique em "Analisar Página Atual" para começar.</p>
+        </div>
+
+        <div id="historySection" class="tab-content hidden">
+            <h2>Histórico de Análises</h2>
+            <input type="search" id="historySearchInput" placeholder="Buscar no histórico...">
+            <div id="historyListContainer"></div>
         </div>
     </div>
 
     <div id="configSection" class="config-section hidden">
         <span id="backButton" class="back-button" title="Voltar para a página principal">&#8592;</span>
         <h2>Configurar Chaves de API</h2>
-        <p>Para analisar as páginas, você precisa fornecer suas próprias chaves de API do Google.</p>
-
+        
         <div class="api-key-input-group">
             <label for="geminiApiKey">Chave API Gemini: <span class="tutorial-icon" id="geminiTutorialIcon" title="Ver tutorial Gemini API Key">?</span></label>
             <input type="text" id="geminiApiKey" name="geminiApiKey" placeholder="Cole sua chave API Gemini aqui">
@@ -49,32 +56,47 @@
             <input type="text" id="programmableSearchEngineId" name="programmableSearchEngineId" placeholder="Cole seu ID aqui">
             <button id="getSearchEngineId" class="get-key-button">Obter ID</button>
         </div>
-
+        
         <button id="saveApiKeysButton">Salvar Chaves</button>
+
+        <div class="divider"></div>
+
+        <h3>Gerenciamento de Dados</h3>
+        <div class="api-key-input-group debug-mode-group">
+            <label for="debugModeToggle">Modo Desenvolvedor</label>
+            <input type="checkbox" id="debugModeToggle">
+            <p class="debug-note">Salva arquivos de log com os prompts e respostas da análise.</p>
+        </div>
+        <div class="config-actions">
+            <button id="exportHistoryButton">Exportar Histórico</button>
+            <input type="file" id="importHistoryInput" accept=".json" class="hidden-file-input">
+            <button id="importHistoryButton">Importar Histórico</button>
+        </div>
         <p id="configStatus" class="status-message"></p>
     </div>
 
     <div id="tutorialModal" class="modal hidden">
         <div class="modal-content">
             <button class="modal-close-button" id="modalCloseButton" title="Fechar tutorial">&times;</button>
-            <h3 id="tutorialTitle"></h3>
-            <div id="tutorialBody" class="tutorial-body-content">
-                <p>Carregando tutorial...</p>
-            </div>
-        </div>
+            <div class="modal-body"> <h3 id="tutorialTitle"></h3>
+                <div id="tutorialBody" class="tutorial-body-content">
+                    <p>Carregando tutorial...</p>
+                </div>
+            </div> </div>
     </div>
 
     <div id="cachePromptModal" class="modal hidden">
         <div class="modal-content">
             <button class="modal-close-button" id="cachePromptCloseButton" title="Fechar">&times;</button>
             <h3>Análise Anterior Encontrada</h3>
-            <p id="cachePromptDetails">Esta página foi analisada recentemente. Deseja usar o resultado anterior para economizar API ou realizar uma nova análise?</p>
+            <p id="cachePromptDetails">Esta página foi analisada recentemente. Deseja usar o resultado anterior ou realizar uma nova análise?</p>
             <div class="cache-prompt-actions">
                 <button id="useCachedResultButton" class="action-button">Usar Resultado Anterior</button>
                 <button id="reanalyzeButton" class="action-button primary">Analisar Novamente</button>
             </div>
         </div>
     </div>
-    <script src="./popup.js"></script>
+    <script src="google_apis.js"></script>
+    <script src="popup.js"></script>
 </body>
 </html>
