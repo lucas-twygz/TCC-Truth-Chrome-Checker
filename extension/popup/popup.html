@@ -22,7 +22,7 @@
 
     <div class="container">
         <div id="homeSection" class="tab-content active">
-            <div class="home-grid">
+             <div class="home-grid">
                 <div class="home-greeting"><h2 id="greetingText">Olá!</h2></div>
                 <div class="home-kpi-card">
                     <h3>Resumo Semanal</h3>
@@ -45,9 +45,12 @@
                     </div>
                 </div>
                 <div class="home-full-width-card">
-                    <p class="impact-text">Você já evitou <strong id="fakeNewsCount">0</strong> notícias falsas.</p>
+                    <p class="impact-text">Você já evitou <strong id="fakeNewsCount">0</strong> notícias com baixa veracidade.</p>
                     <p class="curiosity-text" id="curiosityText">Carregando dica...</p>
                 </div>
+                <footer class="home-footer">
+                    Truth Chrome Checker - 2025
+                </footer>
             </div>
         </div>
 
@@ -61,20 +64,46 @@
         </div>
         
         <div id="imageAnalysisSection" class="tab-content"><h2>Análise por Imagem</h2><p>Esta funcionalidade estará disponível em breve!</p></div>
+
         <div id="historySection" class="tab-content">
             <h2>Histórico de Análises</h2>
             <input type="search" id="historySearchInput" placeholder="Buscar no histórico..."><div id="historyListContainer"></div>
         </div>
+
         <div id="settingsSection" class="tab-content">
              <h2>Configurações</h2>
              <div class="api-key-input-group">
                 <label for="userName">Seu Nome (Opcional)</label>
                 <input type="text" id="userName" placeholder="Isso deixará a saudação mais amigável :)"><p class="input-note">Esta informação é salva apenas no seu navegador.</p>
             </div>
-            <div class="api-key-input-group"><label for="geminiApiKey">Chave API Gemini</label><input type="text" id="geminiApiKey" name="geminiApiKey" placeholder="Cole sua chave API Gemini aqui"></div>
-            <div class="api-key-input-group"><label for="customSearchApiKey">Chave API Custom Search</label><input type="text" id="customSearchApiKey" name="customSearchApiKey" placeholder="Cole sua chave API Custom Search aqui"></div>
-            <div class="api-key-input-group"><label for="programmableSearchEngineId">ID do Mecanismo de Pesquisa</label><input type="text" id="programmableSearchEngineId" name="programmableSearchEngineId" placeholder="Cole seu ID aqui"></div>
+            <div class="api-key-input-group">
+                <label for="geminiApiKey">Chave API Gemini <span class="tutorial-icon" id="geminiTutorialIcon">?</span></label>
+                <input type="text" id="geminiApiKey" name="geminiApiKey" placeholder="Cole sua chave API Gemini aqui">
+            </div>
+            <div class="api-key-input-group">
+                <label for="customSearchApiKey">Chave API Custom Search <span class="tutorial-icon" id="customSearchTutorialIcon">?</span></label>
+                <input type="text" id="customSearchApiKey" name="customSearchApiKey" placeholder="Cole sua chave API Custom Search aqui">
+            </div>
+            <div class="api-key-input-group">
+                <label for="programmableSearchEngineId">ID do Mecanismo de Pesquisa <span class="tutorial-icon" id="cxIdTutorialIcon">?</span></label>
+                <input type="text" id="programmableSearchEngineId" name="programmableSearchEngineId" placeholder="Cole seu ID aqui">
+            </div>
             <button id="saveApiKeysButton">Salvar Configurações</button>
+
+
+            <div class="divider"></div>
+            
+            <h3>Gerenciamento de Dados</h3>
+            <div class="debug-mode-group">
+                <label for="debugModeToggle">Modo Desenvolvedor</label>
+                <input type="checkbox" id="debugModeToggle">
+                <p class="debug-note">Salva arquivos de log com os prompts e respostas da análise.</p>
+            </div>
+            <div class="config-actions">
+                <button id="exportHistoryButton">Exportar Histórico</button>
+                <input type="file" id="importHistoryInput" accept=".json" class="hidden-file-input">
+                <button id="importHistoryButton">Importar Histórico</button>
+            </div>
             <p id="configStatus" class="status-message"></p>
         </div>
     </div>
@@ -89,9 +118,17 @@
             </div>
         </div>
     </div>
+    <div id="tutorialModal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close-button" id="modalCloseButton" title="Fechar tutorial">&times;</button>
+            <div class="modal-body">
+                <h3 id="tutorialTitle"></h3>
+                <div id="tutorialBody" class="tutorial-body-content"></div>
+            </div> 
+        </div>
+    </div>
 
-    <script src="curiosities.js"></script>
-    <script src="google_apis.js"></script>
-    <script src="popup.js"></script>
+    <script src="./curiosities.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
