@@ -21,9 +21,9 @@ export async function getHistory() {
     return data[STORAGE_KEYS.HISTORY] || [];
 }
 
-export async function saveToHistory(url, title, resultText) {
+export async function saveToHistory(url, title, resultText, type = 'text') {
     const history = await getHistory();
-    const newEntry = { url, title, resultText, timestamp: new Date().toISOString() };
+    const newEntry = { url, title, resultText, timestamp: new Date().toISOString(), type };
     const updatedHistory = [newEntry, ...history.filter(item => item.url !== url).slice(0, 99)];
     return chrome.storage.local.set({ [STORAGE_KEYS.HISTORY]: updatedHistory });
 }

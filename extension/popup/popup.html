@@ -13,7 +13,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         </button>
         <button id="navAnalysis" class="nav-button" title="Análise da Página">Análise da Página</button>
-        <button id="navImageAnalysis" class="nav-button" title="Análise por Imagem (Em Breve)" disabled>Análise por Imagem</button>
+        <button id="navImageAnalysis" class="nav-button" title="Análise por Imagem">Análise por Imagem</button>
         <button id="navHistory" class="nav-button" title="Histórico">Histórico</button>
         <button id="navSettings" class="nav-button" title="Configurações">
              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
@@ -63,11 +63,23 @@
             <p id="analysisResultText" class="analysis-result-text"></p>
         </div>
         
-        <div id="imageAnalysisSection" class="tab-content"><h2>Análise por Imagem</h2><p>Esta funcionalidade estará disponível em breve!</p></div>
+        <div id="imageAnalysisSection" class="tab-content">
+            <h2>Análise por Imagem</h2>
+            <p>Faça upload de uma imagem para análise:</p>
+            <input type="file" id="imageUpload" accept="image/*" style="margin: 10px 0;">
+            <button id="analyzeImageButton" class="analysis-button" disabled>Analisar Imagem</button>
+            <div id="imageAnalysisResult" class="analysis-result-text" style="margin-top: 20px;"></div>
+        </div>
 
         <div id="historySection" class="tab-content">
             <h2>Histórico de Análises</h2>
-            <input type="search" id="historySearchInput" placeholder="Buscar no histórico..."><div id="historyListContainer"></div>
+            <div class="history-filters">
+                <button id="filterAll" class="filter-button active">Todas</button>
+                <button id="filterText" class="filter-button">Textuais</button>
+                <button id="filterImages" class="filter-button">Imagens</button>
+            </div>
+            <input type="search" id="historySearchInput" placeholder="Buscar no histórico...">
+            <div id="historyListContainer"></div>
         </div>
 
         <div id="settingsSection" class="tab-content">

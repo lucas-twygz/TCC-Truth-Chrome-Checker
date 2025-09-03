@@ -32,6 +32,12 @@ export const elements = {
         percentageText: document.getElementById('percentageText'),
         analysisResultText: document.getElementById('analysisResultText'),
     },
+    // Análise por Imagem
+    imageAnalysis: {
+        upload: document.getElementById('imageUpload'),
+        analyzeButton: document.getElementById('analyzeImageButton'),
+        result: document.getElementById('imageAnalysisResult'),
+    },
     // Botões de Ação
     buttons: {
         startAnalysisHome: document.getElementById('startAnalysisButtonHome'),
@@ -56,6 +62,9 @@ export const elements = {
     history: {
         searchInput: document.getElementById('historySearchInput'),
         listContainer: document.getElementById('historyListContainer'),
+        filterAll: document.getElementById('filterAll'),
+        filterText: document.getElementById('filterText'),
+        filterImages: document.getElementById('filterImages'),
     },
     // Modais
     modals: {

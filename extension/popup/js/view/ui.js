@@ -112,25 +112,42 @@ export function displayAnalysisResults(responseText, isError = false, inProgress
     analysisResultText.textContent = String(responseText).split('\n').slice(1).join('\n').trim() || responseText;
 }
 
-export function renderHistory(history, onHistoryItemClick) {
+export function renderHistory(history, onHistoryItemClick, filter = 'all') {
     const container = elements.history.listContainer;
     container.innerHTML = '';
 
-    if (history.length === 0) {
+    const filteredHistory = history.filter(item => {
+        if (filter === 'all') return true;
+        if (filter === 'text') return item.type === 'text';
+        if (filter === 'image') return item.type === 'image';
+        return true;
+    });
+
+    if (filteredHistory.length === 0) {
         container.textContent = 'Nenhum registro encontrado.';
         return;
     }
 
-    history.forEach(item => {
+    filteredHistory.forEach(item => {
         const div = document.createElement('div');
         div.className = 'history-item';
         div.addEventListener('click', () => onHistoryItemClick(item));
-        div.innerHTML = `
-            <h3 class="history-item-title">${item.title || "Título indisponível"}</h3>
-            <div class="history-item-url">${item.url}</div>
-            <div class="history-item-date">${new Date(item.timestamp).toLocaleString('pt-BR')}</div>
-            <p class="history-item-result">${item.resultText}</p>
-        `;
+        if (item.type === 'image') {
+            div.innerHTML = `
+                <h3 class="history-item-title">${item.title || "Título indisponível"}</h3>
+                <div class="history-item-url">${item.url}</div>
+                <div class="history-item-date">${new Date(item.timestamp).toLocaleString('pt-BR')}</div>
+                <img src="${item.url}" alt="${item.title || 'Imagem do histórico'}" class="history-item-image" />
+                <p class="history-item-result">${item.resultText}</p>
+            `;
+        } else {
+            div.innerHTML = `
+                <h3 class="history-item-title">${item.title || "Título indisponível"}</h3>
+                <div class="history-item-url">${item.url}</div>
+                <div class="history-item-date">${new Date(item.timestamp).toLocaleString('pt-BR')}</div>
+                <p class="history-item-result">${item.resultText}</p>
+            `;
+        }
         container.appendChild(div);
     });
 }
@@ -146,4 +163,32 @@ export function showCachePromptModal(cachedEntry) {
 
 export function hideCachePromptModal() {
     elements.modals.cachePrompt.classList.add('hidden');
+}
+
+export function displayImageAnalysisResults(responseText, isError = false, inProgress = false) {
+    const resultElement = elements.imageAnalysis.result;
+
+    if (isError) {
+        resultElement.innerHTML = `<div style="color: #e74c3c; font-weight: bold;">Erro: ${responseText}</div>`;
+        return;
+    }
+
+    if (inProgress) {
+        resultElement.innerHTML = `<div style="color: #7f8c8d;">${responseText}</div>`;
+        return;
+    }
+
+    // Para resultados bem-sucedidos, formatar como na análise de texto
+    const percentage = extractPercentage(responseText);
+    let formattedResult = responseText;
+
+    if (percentage !== null) {
+        const color = percentage <= FAKE_NEWS_THRESHOLD ? '#e74c3c' :
+                     percentage < 75 ? '#f39c12' : '#27ae60';
+        formattedResult = `<div style="margin-bottom: 10px; font-weight: bold; color: ${color};">
+            Probabilidade de ser verdadeiro: ${percentage}%
+        </div>${responseText}`;
+    }
+
+    resultElement.innerHTML = formattedResult;
 }

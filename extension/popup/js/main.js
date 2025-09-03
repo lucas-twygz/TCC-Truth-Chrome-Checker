@@ -1,7 +1,8 @@
 import { elements } from './view/domElements.js';
 import * as ui from './view/ui.js';
+import { displayImageAnalysisResults } from './view/ui.js';
 import * as storage from './infrastructure/storageService.js';
-import { analyzeNews } from './application/analysisUseCase.js';
+import { analyzeNews, analyzeImage } from './application/analysisUseCase.js';
 import { STORAGE_KEYS, ONE_DAY_IN_MS, FAKE_NEWS_THRESHOLD } from './config.js';
 import { extractPercentage } from './utils/textUtils.js';
 import { openTutorialModal, closeTutorialModal } from './view/tutorial.js';
@@ -11,17 +12,43 @@ let currentCachedData = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     
-    const handleNavigation = (tabName) => {
-        ui.switchTab(tabName);
-        if (tabName === 'home') loadHomepageData();
-        if (tabName === 'history') {
-            const onHistoryClick = (item) => {
-                ui.switchTab('analysis');
-                ui.displayAnalysisResults(item.resultText, false);
-            };
-            storage.getHistory().then(history => ui.renderHistory(history, onHistoryClick));
+    let currentFilter = 'all';
+    let currentHistory = [];
+
+    const onHistoryClick = (item) => {
+        if (item.type === 'image') {
+            ui.switchTab('imageAnalysis');
+            ui.displayImageAnalysisResults(item.resultText, false);
+        } else {
+            ui.switchTab('analysis');
+            ui.displayAnalysisResults(item.resultText, false);
         }
     };
+
+    const setActiveFilterButton = (activeId) => {
+        ['filterAll', 'filterText', 'filterImages'].forEach(id => {
+            if (id === activeId) {
+                elements.history[id].classList.add('active');
+            } else {
+                elements.history[id].classList.remove('active');
+            }
+        });
+    };
+
+    const handleNavigation = (tabName) => {
+        ui.switchTab(tabName);
+        // Salvar aba atual no armazenamento
+        chrome.storage.local.set({ lastActiveTab: tabName });
+        if (tabName === 'home') loadHomepageData();
+        if (tabName === 'history') {
+            storage.getHistory().then(history => {
+                currentHistory = history;
+                ui.renderHistory(currentHistory, onHistoryClick, currentFilter);
+            });
+        }
+    };
+
+
     
     const handleStartAnalysis = async () => {
         const allData = await storage.getAllData();
@@ -113,6 +140,26 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.buttons.exportHistory.addEventListener('click', () => storage.getHistory().then(ui.exportHistory));
     elements.buttons.importHistory.addEventListener('click', () => elements.settings.importHistoryInput.click());
     elements.settings.importHistoryInput.addEventListener('change', handleImportHistory);
+
+    // Filter button event listeners
+    elements.history.filterAll.addEventListener('click', () => {
+        currentFilter = 'all';
+        ui.renderHistory(currentHistory, onHistoryClick, currentFilter);
+        setActiveFilterButton('filterAll');
+    });
+    elements.history.filterText.addEventListener('click', () => {
+        currentFilter = 'text';
+        ui.renderHistory(currentHistory, onHistoryClick, currentFilter);
+        setActiveFilterButton('filterText');
+    });
+    elements.history.filterImages.addEventListener('click', () => {
+        currentFilter = 'image';
+        ui.renderHistory(currentHistory, onHistoryClick, currentFilter);
+        setActiveFilterButton('filterImages');
+    });
+
+    // Definir botão de filtro ativo inicial
+    setActiveFilterButton('filterAll');
     
     elements.buttons.useCachedResult.addEventListener('click', () => {
         if (currentCachedData) {
@@ -140,15 +187,31 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.tutorials.gemini.addEventListener('click', () => openTutorialModal('gemini'));
     elements.tutorials.customSearch.addEventListener('click', () => openTutorialModal('customSearch'));
     elements.tutorials.cxId.addEventListener('click', () => openTutorialModal('cxId'));
-    
+
+    // Handlers para análise de imagem
+    elements.imageAnalysis.upload.addEventListener('change', handleImageUpload);
+    elements.imageAnalysis.analyzeButton.addEventListener('click', handleImageAnalysis);
+     
     const init = async () => {
         const data = await storage.getAllData();
-        if (!data[STORAGE_KEYS.GEMINI_API_KEY] || !data[STORAGE_KEYS.CUSTOM_SEARCH_API_KEY] || !data[STORAGE_KEYS.SEARCH_ENGINE_ID]) {
-            handleNavigation('settings');
+
+        // Verificar se as chaves de API estão configuradas
+        const hasApiKeys = data[STORAGE_KEYS.GEMINI_API_KEY] && data[STORAGE_KEYS.CUSTOM_SEARCH_API_KEY] && data[STORAGE_KEYS.SEARCH_ENGINE_ID];
+
+        // Obter estado salvo da aba
+        const savedTabData = await chrome.storage.local.get('lastActiveTab');
+        const lastTab = savedTabData.lastActiveTab;
+
+        // Determinar qual aba mostrar
+        let targetTab = 'home';
+        if (!hasApiKeys) {
+            targetTab = 'settings';
             ui.updateConfigStatus('Por favor, configure suas chaves de API para começar.', 'error');
-        } else {
-            handleNavigation('home');
+        } else if (lastTab && ['home', 'analysis', 'imageAnalysis', 'history', 'settings'].includes(lastTab)) {
+            targetTab = lastTab;
         }
+
+        handleNavigation(targetTab);
         ui.loadSettingsScreenData(data);
     };
     init();
@@ -167,4 +230,44 @@ async function loadHomepageData() {
         curiosity: curiosity,
         lastEntry: history.length > 0 ? history[0] : null
     });
+}
+
+function handleImageUpload() {
+    const file = elements.imageAnalysis.upload.files[0];
+    if (file) {
+        elements.imageAnalysis.analyzeButton.disabled = false;
+    } else {
+        elements.imageAnalysis.analyzeButton.disabled = true;
+    }
+}
+
+async function handleImageAnalysis() {
+    const file = elements.imageAnalysis.upload.files[0];
+    if (!file) {
+        displayImageAnalysisResults("Nenhuma imagem selecionada.", true);
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        try {
+            const base64Data = event.target.result.split(',')[1];
+            const imageData = {
+                type: file.type,
+                data: base64Data
+            };
+            elements.imageAnalysis.analyzeButton.disabled = true;
+            displayImageAnalysisResults("Analisando imagem...", false, true);
+            const allData = await storage.getAllData();
+            const result = await analyzeImage(imageData, allData, (status) => {
+                displayImageAnalysisResults(status, false, true);
+            });
+            displayImageAnalysisResults(result, false, false);
+        } catch (error) {
+            displayImageAnalysisResults(`Erro na análise de imagem: ${error.message}`, true, false);
+        } finally {
+            elements.imageAnalysis.analyzeButton.disabled = false;
+        }
+    };
+    reader.readAsDataURL(file);
 }

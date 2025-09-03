@@ -256,6 +256,43 @@ h3 { font-size: 1.0em; margin-bottom: 10px; font-weight: 500; color: #34495e; }
 
 .analysis-button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
 
+#imageUpload {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px;
+    box-sizing: border-box;
+    cursor: pointer;
+    background-color: var(--card-background);
+    color: var(--text-color);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#imageUpload:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 5px var(--primary-color);
+}
+
+#imageUpload:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 8px var(--primary-color);
+}
+
+#imageAnalysisResult {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    min-height: 250px;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--card-background);
+    color: var(--text-color);
+    font-size: 1.1em;
+    line-height: 1.4;
+    margin-top: 10px;
+}
+
 #startAnalysisButtonPage { margin-bottom: 15px; }
 
 .gauge-container { 
@@ -301,13 +338,41 @@ h3 { font-size: 1.0em; margin-bottom: 10px; font-weight: 500; color: #34495e; }
     border-radius: 6px; 
 }
 
-#historySearchInput { 
-    width: 100%; 
-    padding: 10px 12px; 
-    border-radius: 5px; 
-    box-sizing: border-box; 
-    font-size: 0.9em; 
-    margin-bottom: 15px; 
+.history-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.filter-button {
+    flex: 1;
+    padding: 8px 12px;
+    background-color: #ecf0f1;
+    color: #7f8c8d;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 500;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.filter-button:hover {
+    background-color: #d5dbdb;
+}
+
+.filter-button.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#historySearchInput {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 5px;
+    box-sizing: border-box;
+    font-size: 0.9em;
+    margin-bottom: 15px;
 }
 
 #historyListContainer { 
