@@ -32,9 +32,14 @@ export const elements = {
         percentageText: document.getElementById('percentageText'),
         analysisResultText: document.getElementById('analysisResultText'),
     },
-    // Análise por Imagem
+   // Análise por Imagem
     imageAnalysis: {
+        uploadArea: document.getElementById('uploadArea'),
+        selectFileButton: document.getElementById('selectFileButton'),
         upload: document.getElementById('imageUpload'),
+        previewContainer: document.getElementById('imagePreviewContainer'),
+        preview: document.getElementById('imagePreview'),
+        removeImageButton: document.getElementById('removeImageButton'),
         analyzeButton: document.getElementById('analyzeImageButton'),
         result: document.getElementById('imageAnalysisResult'),
     },

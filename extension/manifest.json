@@ -39,6 +39,6 @@
         "128": "assets/icon.png"
     },
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; connect-src 'self' https://*.googleapis.com; style-src 'self' https://fonts.googleapis.com; style-src-elem 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; object-src 'self'"
+        "extension_pages": "script-src 'self'; connect-src 'self' https://*.googleapis.com; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; object-src 'self'"
     }
 }

@@ -9,9 +9,10 @@ import { openTutorialModal, closeTutorialModal } from './view/tutorial.js';
 
 let currentAnalysisParams = {};
 let currentCachedData = null;
+let imageFile = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-    
+
     let currentFilter = 'all';
     let currentHistory = [];
 
@@ -27,18 +28,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const setActiveFilterButton = (activeId) => {
         ['filterAll', 'filterText', 'filterImages'].forEach(id => {
-            if (id === activeId) {
-                elements.history[id].classList.add('active');
-            } else {
-                elements.history[id].classList.remove('active');
+            if (elements.history[id]) {
+                if (id === activeId) {
+                    elements.history[id].classList.add('active');
+                } else {
+                    elements.history[id].classList.remove('active');
+                }
             }
         });
     };
 
     const handleNavigation = (tabName) => {
         ui.switchTab(tabName);
-        // Salvar aba atual no armazenamento
         chrome.storage.local.set({ lastActiveTab: tabName });
+
+        let applyCompact = false;
+        // Condição para a aba de Análise de Página
+        if (tabName === 'analysis' && document.getElementById('analysisResultContainer').classList.contains('hidden')) {
+            applyCompact = true;
+        }
+        // Condição CORRIGIDA para a aba de Análise por Imagem
+        if (tabName === 'imageAnalysis' && document.getElementById('imagePreviewContainer').classList.contains('hidden')) {
+            applyCompact = true;
+        }
+
+        if (applyCompact) {
+            document.body.classList.add('compact');
+        } else {
+            document.body.classList.remove('compact');
+        }
+
         if (tabName === 'home') loadHomepageData();
         if (tabName === 'history') {
             storage.getHistory().then(history => {
@@ -47,9 +66,6 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
     };
-
-
-    
     const handleStartAnalysis = async () => {
         const allData = await storage.getAllData();
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -90,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ui.displayAnalysisResults(`Erro na análise: ${error.message}`, true, false);
         }
     };
-    
+
     const handleSaveSettings = async () => {
         const settings = {
             geminiApiKey: elements.settings.geminiApiKey.value.trim(),
@@ -117,10 +133,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (Array.isArray(history) && (history.length === 0 || (history[0].url && history[0].timestamp))) {
                     await storage.importHistory(history);
                     if (document.getElementById('historySection').classList.contains('active')) {
-                        const onHistoryClick = (item) => {
-                            ui.switchTab('analysis');
-                            ui.displayAnalysisResults(item.resultText, false);
-                        };
                         ui.renderHistory(history, onHistoryClick);
                     }
                     alert('Histórico importado com sucesso!');
@@ -141,7 +153,6 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.buttons.importHistory.addEventListener('click', () => elements.settings.importHistoryInput.click());
     elements.settings.importHistoryInput.addEventListener('change', handleImportHistory);
 
-    // Filter button event listeners
     elements.history.filterAll.addEventListener('click', () => {
         currentFilter = 'all';
         ui.renderHistory(currentHistory, onHistoryClick, currentFilter);
@@ -158,9 +169,8 @@ document.addEventListener("DOMContentLoaded", () => {
         setActiveFilterButton('filterImages');
     });
 
-    // Definir botão de filtro ativo inicial
     setActiveFilterButton('filterAll');
-    
+
     elements.buttons.useCachedResult.addEventListener('click', () => {
         if (currentCachedData) {
             ui.switchTab('analysis');
@@ -188,21 +198,88 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.tutorials.customSearch.addEventListener('click', () => openTutorialModal('customSearch'));
     elements.tutorials.cxId.addEventListener('click', () => openTutorialModal('cxId'));
 
-    // Handlers para análise de imagem
-    elements.imageAnalysis.upload.addEventListener('change', handleImageUpload);
-    elements.imageAnalysis.analyzeButton.addEventListener('click', handleImageAnalysis);
-     
+    const processImageFile = (file) => {
+        if (file && file.type.startsWith('image/')) {
+            imageFile = file;
+            ui.showImagePreview(file);
+            elements.imageAnalysis.analyzeButton.disabled = false;
+        }
+    };
+
+    elements.imageAnalysis.selectFileButton.addEventListener('click', () => {
+        elements.imageAnalysis.upload.click();
+    });
+
+    elements.imageAnalysis.upload.addEventListener('change', (event) => {
+        processImageFile(event.target.files[0]);
+    });
+
+    elements.imageAnalysis.uploadArea.addEventListener('click', () => {
+        elements.imageAnalysis.upload.click();
+    });
+
+    elements.imageAnalysis.uploadArea.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        event.currentTarget.classList.add('drag-over');
+    });
+
+    elements.imageAnalysis.uploadArea.addEventListener('dragleave', (event) => {
+        event.currentTarget.classList.remove('drag-over');
+    });
+
+    elements.imageAnalysis.uploadArea.addEventListener('drop', (event) => {
+        event.preventDefault();
+        event.currentTarget.classList.remove('drag-over');
+        processImageFile(event.dataTransfer.files[0]);
+    });
+
+    document.addEventListener('paste', (event) => {
+        if (elements.sections.imageAnalysis.classList.contains('active')) {
+            const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const file = items[i].getAsFile();
+                    processImageFile(file);
+                    break;
+                }
+            }
+        }
+    });
+
+    elements.imageAnalysis.removeImageButton.addEventListener('click', () => {
+        ui.hideImagePreview();
+        imageFile = null;
+        elements.imageAnalysis.upload.value = '';
+        elements.imageAnalysis.analyzeButton.disabled = true;
+    });
+
+    elements.imageAnalysis.analyzeButton.addEventListener('click', async () => {
+        if (!imageFile) return;
+
+        ui.displayImageAnalysisResults("Analisando imagem...", false, true);
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const base64Data = event.target.result.split(',')[1];
+                const imageData = { type: imageFile.type, data: base64Data };
+                const allData = await storage.getAllData();
+                const result = await analyzeImage(imageData, allData, (status) => {
+                    ui.displayImageAnalysisResults(status, false, true);
+                });
+                ui.displayImageAnalysisResults(result, false, false);
+            } catch (error) {
+                ui.displayImageAnalysisResults(`Erro na análise: ${error.message}`, true, false);
+            }
+        };
+        reader.readAsDataURL(imageFile);
+    });
+
     const init = async () => {
         const data = await storage.getAllData();
-
-        // Verificar se as chaves de API estão configuradas
         const hasApiKeys = data[STORAGE_KEYS.GEMINI_API_KEY] && data[STORAGE_KEYS.CUSTOM_SEARCH_API_KEY] && data[STORAGE_KEYS.SEARCH_ENGINE_ID];
-
-        // Obter estado salvo da aba
         const savedTabData = await chrome.storage.local.get('lastActiveTab');
         const lastTab = savedTabData.lastActiveTab;
 
-        // Determinar qual aba mostrar
         let targetTab = 'home';
         if (!hasApiKeys) {
             targetTab = 'settings';
@@ -226,48 +303,15 @@ async function loadHomepageData() {
     ui.updateHomepage({
         userName: data[STORAGE_KEYS.USER_NAME],
         weeklyCount: weeklyAnalyses.length,
-        fakeNewsCount: history.filter(item => extractPercentage(item.resultText) <= FAKE_NEWS_THRESHOLD).length,
+        fakeNewsCount: history.filter(item => {
+            try {
+                const res = JSON.parse(item.resultText);
+                return res.pontuacaoGeral <= FAKE_NEWS_THRESHOLD;
+            } catch {
+                return extractPercentage(item.resultText) <= FAKE_NEWS_THRESHOLD;
+            }
+        }).length,
         curiosity: curiosity,
         lastEntry: history.length > 0 ? history[0] : null
     });
-}
-
-function handleImageUpload() {
-    const file = elements.imageAnalysis.upload.files[0];
-    if (file) {
-        elements.imageAnalysis.analyzeButton.disabled = false;
-    } else {
-        elements.imageAnalysis.analyzeButton.disabled = true;
-    }
-}
-
-async function handleImageAnalysis() {
-    const file = elements.imageAnalysis.upload.files[0];
-    if (!file) {
-        displayImageAnalysisResults("Nenhuma imagem selecionada.", true);
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-        try {
-            const base64Data = event.target.result.split(',')[1];
-            const imageData = {
-                type: file.type,
-                data: base64Data
-            };
-            elements.imageAnalysis.analyzeButton.disabled = true;
-            displayImageAnalysisResults("Analisando imagem...", false, true);
-            const allData = await storage.getAllData();
-            const result = await analyzeImage(imageData, allData, (status) => {
-                displayImageAnalysisResults(status, false, true);
-            });
-            displayImageAnalysisResults(result, false, false);
-        } catch (error) {
-            displayImageAnalysisResults(`Erro na análise de imagem: ${error.message}`, true, false);
-        } finally {
-            elements.imageAnalysis.analyzeButton.disabled = false;
-        }
-    };
-    reader.readAsDataURL(file);
 }

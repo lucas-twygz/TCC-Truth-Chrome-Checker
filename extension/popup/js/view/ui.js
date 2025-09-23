@@ -4,10 +4,10 @@ import { extractPercentage } from '../utils/textUtils.js';
 
 export function switchTab(tabName) {
     for (const section of Object.values(elements.sections)) {
-        if(section) section.classList.remove('active');
+        if (section) section.classList.remove('active');
     }
     for (const navButton of Object.values(elements.nav)) {
-        if(navButton) navButton.classList.remove('active');
+        if (navButton) navButton.classList.remove('active');
     }
     if (elements.sections[tabName]) {
         elements.sections[tabName].classList.add('active');
@@ -34,7 +34,7 @@ export function updateConfigStatus(message, type) {
 
 export function updateHomepage(data) {
     const { userName, weeklyCount, fakeNewsCount, curiosity, lastEntry } = data;
-    
+
     const hour = new Date().getHours();
     let greeting = (hour < 12) ? 'Bom dia,' : (hour < 18) ? 'Boa tarde,' : 'Boa noite,';
     elements.home.greetingText.textContent = userName ? `${greeting} ${userName}.` : greeting.replace(',', '!');
@@ -48,7 +48,7 @@ export function updateHomepage(data) {
 
 function updateLastAnalysisCard(lastEntry) {
     const { gaugeFill, gaugePercent, lastAnalysisUrl } = elements.home;
-    
+
     if (!lastEntry) {
         gaugePercent.textContent = '--%';
         lastAnalysisUrl.textContent = 'Nenhuma análise recente.';
@@ -57,12 +57,19 @@ function updateLastAnalysisCard(lastEntry) {
         return;
     }
 
-    const percentage = extractPercentage(lastEntry.resultText);
+    let percentage = null;
+    try {
+        const resultData = JSON.parse(lastEntry.resultText);
+        percentage = resultData.pontuacaoGeral;
+    } catch (e) {
+        percentage = extractPercentage(lastEntry.resultText);
+    }
+
     if (percentage !== null) {
         gaugePercent.textContent = `${percentage}%`;
         const degrees = (percentage / 100) * 180;
         gaugeFill.style.transform = `rotate(${degrees}deg)`;
-        
+
         if (percentage <= FAKE_NEWS_THRESHOLD) gaugeFill.style.backgroundColor = 'var(--red-light)';
         else if (percentage < 75) gaugeFill.style.backgroundColor = 'var(--yellow-light)';
         else gaugeFill.style.backgroundColor = 'var(--green-light)';
@@ -78,38 +85,156 @@ function updateLastAnalysisCard(lastEntry) {
     }
 }
 
+export function showImagePreview(file) {
+    document.body.classList.remove('compact');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        elements.imageAnalysis.preview.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    elements.imageAnalysis.uploadArea.style.display = 'none';
+    elements.imageAnalysis.previewContainer.classList.remove('hidden');
+}
+
+export function hideImagePreview() {
+    document.body.classList.add('compact');
+    elements.imageAnalysis.uploadArea.style.display = 'block';
+    elements.imageAnalysis.previewContainer.classList.add('hidden');
+    elements.imageAnalysis.preview.src = '#';
+    elements.imageAnalysis.result.innerHTML = '';
+}
+
+
+function isValidURL(string) {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+function createMetricCard(metricName, score, text) {
+    const sanitizedName = metricName.replace(/\s+/g, '-');
+    return `
+        <div class="metric-card">
+            <h4>${metricName}</h4>
+            <div class="metric-bar-container">
+                <div class="metric-bar-track">
+                    <div class="metric-bar-fill" data-metric="${sanitizedName}"></div>
+                </div>
+                <span class="metric-percentage">${score}%</span>
+            </div>
+            <p>${text}</p>
+        </div>
+    `;
+}
+
 export function displayAnalysisResults(responseText, isError = false, inProgress = false) {
-    const { gaugeBar, percentageText, analysisResultText } = elements.analysis;
-    
-    percentageText.classList.remove('hidden');
-    analysisResultText.textContent = '';
+    document.body.classList.remove('compact');
+    const resultContainer = document.getElementById('analysisResultContainer');
+    const placeholder = document.getElementById('analysisPlaceholder');
+    const { gaugeBar, percentageText } = elements.analysis;
+    const geralSummary = document.getElementById('geralSummary');
+    const detailedAnalysis = document.getElementById('detailedAnalysis');
+    const sources = document.getElementById('sources');
+    const sourcesTitle = document.getElementById('sourcesTitle');
+
+    placeholder.classList.add('hidden');
+    resultContainer.classList.remove('hidden');
 
     if (isError) {
-        gaugeBar.style.width = '0%';
-        percentageText.textContent = 'Erro na Análise';
-        analysisResultText.textContent = responseText;
-        return;
-    }
-    
-    if (inProgress) {
-        gaugeBar.style.width = '100%';
-        gaugeBar.style.backgroundColor = '#7f8c8d';
-        percentageText.textContent = responseText;
-        analysisResultText.textContent = "Por favor, aguarde...";
+        resultContainer.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        placeholder.textContent = responseText;
         return;
     }
 
-    const percentage = extractPercentage(responseText);
-    if (percentage !== null) {
-        gaugeBar.style.width = percentage + '%';
-        gaugeBar.style.backgroundColor = `hsl(${(percentage/100)*120}, 70%, 50%)`;
-        percentageText.textContent = `Probabilidade de ser verdadeiro: ${percentage}%`;
-    } else {
-        gaugeBar.style.width = '0%';
-        percentageText.textContent = 'Análise Concluída';
+    if (inProgress) {
+        percentageText.textContent = responseText;
+        geralSummary.textContent = "Aguarde, processando...";
+        gaugeBar.style.setProperty('--bar-width', '100%');
+        gaugeBar.style.setProperty('--bar-color', '#7f8c8d');
+        detailedAnalysis.innerHTML = '';
+        sources.innerHTML = '';
+        sourcesTitle.classList.add('hidden');
+        return;
     }
-    
-    analysisResultText.textContent = String(responseText).split('\n').slice(1).join('\n').trim() || responseText;
+
+    if (!responseText.trim().startsWith('{')) {
+        resultContainer.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        placeholder.textContent = `A API retornou uma resposta inesperada (não-JSON):\n\n"${responseText}"`;
+        console.warn("A resposta não era JSON, exibindo como texto puro:", responseText);
+        return;
+    }
+
+    try {
+        const data = JSON.parse(responseText);
+
+        const percentage = data.pontuacaoGeral;
+        const mainBarColor = percentage > 0 ? `hsl(${(percentage / 100) * 120}, 70%, 50%)` : '#d3d3d3';
+        gaugeBar.style.setProperty('--bar-width', `${percentage}%`);
+        gaugeBar.style.setProperty('--bar-color', mainBarColor);
+        percentageText.innerHTML = `Pontuação Geral de Confiabilidade: <span class="metric-percentage">${percentage}%</span>`;
+
+        geralSummary.textContent = data.resumoGeral;
+
+        const metricMap = {
+            'Veracidade-dos-Fatos': 'fatos',
+            'Título-e-Sensacionalismo': 'titulo',
+            'Qualidade-das-Fontes': 'fontes'
+        };
+
+        detailedAnalysis.innerHTML =
+            createMetricCard('Veracidade dos Fatos', data.analiseDetalhada.fatos.score, data.analiseDetalhada.fatos.texto) +
+            createMetricCard('Título e Sensacionalismo', data.analiseDetalhada.titulo.score, data.analiseDetalhada.titulo.texto) +
+            createMetricCard('Qualidade das Fontes', data.analiseDetalhada.fontes.score, data.analiseDetalhada.fontes.texto);
+
+        Object.keys(metricMap).forEach(metricName => {
+            const dataKey = metricMap[metricName];
+            const score = data.analiseDetalhada[dataKey].score;
+            const element = detailedAnalysis.querySelector(`[data-metric="${metricName.replace(/\s+/g, '-')}"]`);
+            if (element) {
+                const color = score > 0 ? `hsl(${(score / 100) * 120}, 70%, 50%)` : '#d3d3d3';
+                element.style.setProperty('--bar-width', `${score}%`);
+                element.style.setProperty('--bar-color', color);
+            }
+        });
+
+        let sourcesHTML = '';
+        const { confirmam, contestam } = data.fontesVerificadas;
+        if (confirmam && confirmam.length > 0) {
+            sourcesHTML += '<h5>Fontes que Confirmam:</h5>';
+            confirmam.forEach(fonte => {
+                if (fonte && fonte.url && isValidURL(fonte.url)) {
+                    sourcesHTML += `<div class="source-item">✅ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
+                }
+            });
+        }
+        if (contestam && contestam.length > 0) {
+            sourcesHTML += '<h5>Fontes que Contestam:</h5>';
+            contestam.forEach(fonte => {
+                if (fonte && fonte.url && isValidURL(fonte.url)) {
+                    sourcesHTML += `<div class="source-item">❌ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
+                }
+            });
+        }
+
+        if (sourcesHTML === '') {
+            sourcesTitle.classList.add('hidden');
+            sources.innerHTML = '<p style="text-align: center;">Nenhuma fonte externa foi encontrada para verificação.</p>';
+        } else {
+            sourcesTitle.classList.remove('hidden');
+            sources.innerHTML = `<div class="sources-card"><div class="sources-list-container">${sourcesHTML}</div></div>`;
+        }
+
+    } catch (e) {
+        resultContainer.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        placeholder.textContent = "Erro ao processar a resposta da análise. Tente novamente.";
+        console.error("JSON Parsing Error:", e, "Raw Text:", responseText);
+    }
 }
 
 export function renderHistory(history, onHistoryItemClick, filter = 'all') {
@@ -132,31 +257,38 @@ export function renderHistory(history, onHistoryItemClick, filter = 'all') {
         const div = document.createElement('div');
         div.className = 'history-item';
         div.addEventListener('click', () => onHistoryItemClick(item));
-        if (item.type === 'image') {
-            div.innerHTML = `
-                <h3 class="history-item-title">${item.title || "Título indisponível"}</h3>
-                <div class="history-item-url">${item.url}</div>
-                <div class="history-item-date">${new Date(item.timestamp).toLocaleString('pt-BR')}</div>
-                <img src="${item.url}" alt="${item.title || 'Imagem do histórico'}" class="history-item-image" />
-                <p class="history-item-result">${item.resultText}</p>
-            `;
-        } else {
-            div.innerHTML = `
-                <h3 class="history-item-title">${item.title || "Título indisponível"}</h3>
-                <div class="history-item-url">${item.url}</div>
-                <div class="history-item-date">${new Date(item.timestamp).toLocaleString('pt-BR')}</div>
-                <p class="history-item-result">${item.resultText}</p>
-            `;
+
+        let resultTextPreview = '';
+        try {
+            const resultData = JSON.parse(item.resultText);
+            resultTextPreview = `<b>${resultData.pontuacaoGeral}%</b> - ${resultData.resumoGeral}`;
+        } catch (e) {
+            resultTextPreview = item.resultText.substring(0, 150) + '...';
         }
+
+        div.innerHTML = `
+            <h3 class="history-item-title">${item.title || "Título indisponível"}</h3>
+            <div class="history-item-url">${item.url}</div>
+            <div class="history-item-date">${new Date(item.timestamp).toLocaleString('pt-BR')}</div>
+            <p class="history-item-result">${resultTextPreview}</p>
+        `;
         container.appendChild(div);
     });
 }
 
 export function showCachePromptModal(cachedEntry) {
+    document.body.classList.remove('compact');
     const { cachePrompt, cachePromptDetails } = elements.modals;
     const date = new Date(cachedEntry.timestamp).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-    let preview = cachedEntry.resultText || "Resultado anterior indisponível.";
-    if (preview.length > 100) preview = preview.substring(0, 100) + "...";
+
+    let preview = "Resultado anterior indisponível.";
+    try {
+        const data = JSON.parse(cachedEntry.resultText);
+        preview = `${data.pontuacaoGeral}% - ${data.resumoGeral}`;
+    } catch (e) {
+        preview = cachedEntry.resultText.substring(0, 100) + "...";
+    }
+
     cachePromptDetails.textContent = `Analisado em ${date}. Resultado: "${preview}". Deseja usar este resultado ou analisar novamente?`;
     cachePrompt.classList.remove('hidden');
 }
@@ -166,29 +298,98 @@ export function hideCachePromptModal() {
 }
 
 export function displayImageAnalysisResults(responseText, isError = false, inProgress = false) {
+    document.body.classList.remove('compact');
     const resultElement = elements.imageAnalysis.result;
 
     if (isError) {
-        resultElement.innerHTML = `<div style="color: #e74c3c; font-weight: bold;">Erro: ${responseText}</div>`;
+        resultElement.innerHTML = `<p class="analysis-placeholder" style="color: #e74c3c;">${responseText}</p>`;
+        resultElement.dataset.hasContent = 'true';
         return;
     }
 
     if (inProgress) {
-        resultElement.innerHTML = `<div style="color: #7f8c8d;">${responseText}</div>`;
+        resultElement.innerHTML = `<p class="analysis-placeholder">${responseText}</p>`;
         return;
     }
 
-    // Para resultados bem-sucedidos, formatar como na análise de texto
-    const percentage = extractPercentage(responseText);
-    let formattedResult = responseText;
-
-    if (percentage !== null) {
-        const color = percentage <= FAKE_NEWS_THRESHOLD ? '#e74c3c' :
-                     percentage < 75 ? '#f39c12' : '#27ae60';
-        formattedResult = `<div style="margin-bottom: 10px; font-weight: bold; color: ${color};">
-            Probabilidade de ser verdadeiro: ${percentage}%
-        </div>${responseText}`;
+    if (!responseText.trim().startsWith('{')) {
+        resultElement.innerHTML = `<p class="analysis-placeholder" style="color: #e74c3c;">A API retornou uma resposta inesperada (não-JSON).</p>`;
+        resultElement.dataset.hasContent = 'true';
+        console.warn("A resposta não era JSON:", responseText);
+        return;
     }
 
-    resultElement.innerHTML = formattedResult;
+    try {
+        const data = JSON.parse(responseText);
+        resultElement.dataset.hasContent = 'true';
+
+        // Cria a mesma estrutura do painel de análise de texto
+        let sourcesHTML = '';
+        const { confirmam, contestam } = data.fontesVerificadas;
+        if (confirmam && confirmam.length > 0) {
+            sourcesHTML += '<h5>Fontes que Confirmam:</h5>';
+            confirmam.forEach(fonte => {
+                if (fonte && fonte.url && isValidURL(fonte.url)) {
+                    sourcesHTML += `<div class="source-item">✅ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
+                }
+            });
+        }
+        if (contestam && contestam.length > 0) {
+            sourcesHTML += '<h5>Fontes que Contestam:</h5>';
+            contestam.forEach(fonte => {
+                if (fonte && fonte.url && isValidURL(fonte.url)) {
+                    sourcesHTML += `<div class="source-item">❌ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
+                }
+            });
+        }
+
+        const sourcesBlock = (sourcesHTML !== '')
+            ? `<div class="sources-container">
+                 <h3 id="sourcesTitle">Fontes Utilizadas</h3>
+                 <div class="sources-card"><div class="sources-list-container">${sourcesHTML}</div></div>
+               </div>`
+            : '';
+
+        resultElement.innerHTML = `
+            <p class="percentage-text">Pontuação Geral de Confiabilidade: <span class="metric-percentage">${data.pontuacaoGeral}%</span></p>
+            <div class="gauge-container">
+                <div class="gauge-bar-track">
+                    <div class="gauge-bar-fill" id="imageAnalysisGaugeBar"></div>
+                </div>
+            </div>
+            <p class="geral-summary">${data.resumoGeral}</p>
+            <hr class="divider">
+            <h3>Análise Detalhada</h3>
+            <div class="detailed-analysis-container">
+                ${createMetricCard('Veracidade dos Fatos', data.analiseDetalhada.fatos.score, data.analiseDetalhada.fatos.texto)}
+                ${createMetricCard('Análise do Contexto', data.analiseDetalhada.titulo.score, data.analiseDetalhada.titulo.texto)}
+                ${createMetricCard('Qualidade das Fontes', data.analiseDetalhada.fontes.score, data.analiseDetalhada.fontes.texto)}
+            </div>
+            ${sourcesBlock}
+        `;
+
+        // Pinta a barra principal
+        const gaugeBar = document.getElementById('imageAnalysisGaugeBar');
+        const percentage = data.pontuacaoGeral;
+        const mainBarColor = percentage > 0 ? `hsl(${(percentage / 100) * 120}, 70%, 50%)` : '#d3d3d3';
+        gaugeBar.style.setProperty('--bar-width', `${percentage}%`);
+        gaugeBar.style.setProperty('--bar-color', mainBarColor);
+
+        // Pinta as barras detalhadas
+        const metricMap = { 'Veracidade-dos-Fatos': 'fatos', 'Análise-do-Contexto': 'titulo', 'Qualidade-das-Fontes': 'fontes' };
+        Object.keys(metricMap).forEach(metricName => {
+            const dataKey = metricMap[metricName];
+            const score = data.analiseDetalhada[dataKey].score;
+            const element = resultElement.querySelector(`[data-metric="${metricName}"]`);
+            if (element) {
+                const color = score > 0 ? `hsl(${(score / 100) * 120}, 70%, 50%)` : '#d3d3d3';
+                element.style.setProperty('--bar-width', `${score}%`);
+                element.style.setProperty('--bar-color', color);
+            }
+        });
+
+    } catch (e) {
+        resultElement.innerHTML = `<div style="color: #e74c3c; font-weight: bold;">Erro ao processar o resultado da análise da imagem.</div>`;
+        console.error("Erro ao exibir resultado da imagem:", e);
+    }
 }
