@@ -102,6 +102,7 @@ export function hideImagePreview() {
     elements.imageAnalysis.previewContainer.classList.add('hidden');
     elements.imageAnalysis.preview.src = '#';
     elements.imageAnalysis.result.innerHTML = '';
+    delete elements.imageAnalysis.result.dataset.hasContent;
 }
 
 
@@ -309,6 +310,7 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
 
     if (inProgress) {
         resultElement.innerHTML = `<p class="analysis-placeholder">${responseText}</p>`;
+        resultElement.dataset.hasContent = 'false'; // Não há conteúdo final ainda
         return;
     }
 
@@ -323,33 +325,43 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
         const data = JSON.parse(responseText);
         resultElement.dataset.hasContent = 'true';
 
-        // Cria a mesma estrutura do painel de análise de texto
+        // --- Bloco de Fontes (Sources) ---
         let sourcesHTML = '';
         const { confirmam, contestam } = data.fontesVerificadas;
-        if (confirmam && confirmam.length > 0) {
+        if (confirmam?.length > 0) {
             sourcesHTML += '<h5>Fontes que Confirmam:</h5>';
             confirmam.forEach(fonte => {
-                if (fonte && fonte.url && isValidURL(fonte.url)) {
+                if (fonte?.url && isValidURL(fonte.url)) {
                     sourcesHTML += `<div class="source-item">✅ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
                 }
             });
         }
-        if (contestam && contestam.length > 0) {
+        if (contestam?.length > 0) {
             sourcesHTML += '<h5>Fontes que Contestam:</h5>';
             contestam.forEach(fonte => {
-                if (fonte && fonte.url && isValidURL(fonte.url)) {
+                if (fonte?.url && isValidURL(fonte.url)) {
                     sourcesHTML += `<div class="source-item">❌ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
                 }
             });
         }
-
         const sourcesBlock = (sourcesHTML !== '')
             ? `<div class="sources-container">
-                 <h3 id="sourcesTitle">Fontes Utilizadas</h3>
+                 <h3>Fontes Utilizadas</h3>
                  <div class="sources-card"><div class="sources-list-container">${sourcesHTML}</div></div>
                </div>`
             : '';
 
+        // --- Bloco de Análise Detalhada (com o card de Integridade incluído) ---
+        const detailedAnalysisBlock = `
+            <div class="detailed-analysis-container">
+                ${createMetricCard('Veracidade dos Fatos', data.analiseDetalhada.fatos.score, data.analiseDetalhada.fatos.texto)}
+                ${createMetricCard('Análise do Contexto', data.analiseDetalhada.titulo.score, data.analiseDetalhada.titulo.texto)}
+                ${createMetricCard('Qualidade das Fontes', data.analiseDetalhada.fontes.score, data.analiseDetalhada.fontes.texto)}
+                ${data.analiseDetalhada.integridade ? createMetricCard('Análise de Integridade', data.analiseDetalhada.integridade.score, data.analiseDetalhada.integridade.texto) : ''}
+            </div>
+        `;
+
+        // --- Montagem final do HTML ---
         resultElement.innerHTML = `
             <p class="percentage-text">Pontuação Geral de Confiabilidade: <span class="metric-percentage">${data.pontuacaoGeral}%</span></p>
             <div class="gauge-container">
@@ -360,33 +372,31 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
             <p class="geral-summary">${data.resumoGeral}</p>
             <hr class="divider">
             <h3>Análise Detalhada</h3>
-            <div class="detailed-analysis-container">
-                ${createMetricCard('Veracidade dos Fatos', data.analiseDetalhada.fatos.score, data.analiseDetalhada.fatos.texto)}
-                ${createMetricCard('Análise do Contexto', data.analiseDetalhada.titulo.score, data.analiseDetalhada.titulo.texto)}
-                ${createMetricCard('Qualidade das Fontes', data.analiseDetalhada.fontes.score, data.analiseDetalhada.fontes.texto)}
-            </div>
+            ${detailedAnalysisBlock}
             ${sourcesBlock}
         `;
 
-        // Pinta a barra principal
-        const gaugeBar = document.getElementById('imageAnalysisGaugeBar');
+        // --- Pinta as barras de progresso ---
         const percentage = data.pontuacaoGeral;
         const mainBarColor = percentage > 0 ? `hsl(${(percentage / 100) * 120}, 70%, 50%)` : '#d3d3d3';
-        gaugeBar.style.setProperty('--bar-width', `${percentage}%`);
-        gaugeBar.style.setProperty('--bar-color', mainBarColor);
+        document.getElementById('imageAnalysisGaugeBar').style.setProperty('--bar-width', `${percentage}%`);
+        document.getElementById('imageAnalysisGaugeBar').style.setProperty('--bar-color', mainBarColor);
 
-        // Pinta as barras detalhadas
-        const metricMap = { 'Veracidade-dos-Fatos': 'fatos', 'Análise-do-Contexto': 'titulo', 'Qualidade-das-Fontes': 'fontes' };
-        Object.keys(metricMap).forEach(metricName => {
-            const dataKey = metricMap[metricName];
-            const score = data.analiseDetalhada[dataKey].score;
-            const element = resultElement.querySelector(`[data-metric="${metricName}"]`);
+        const paintMetricBar = (metricName, score) => {
+            const element = resultElement.querySelector(`[data-metric="${metricName.replace(/\s+/g, '-')}"]`);
             if (element) {
                 const color = score > 0 ? `hsl(${(score / 100) * 120}, 70%, 50%)` : '#d3d3d3';
                 element.style.setProperty('--bar-width', `${score}%`);
                 element.style.setProperty('--bar-color', color);
             }
-        });
+        };
+
+        paintMetricBar('Veracidade-dos-Fatos', data.analiseDetalhada.fatos.score);
+        paintMetricBar('Análise-do-Contexto', data.analiseDetalhada.titulo.score);
+        paintMetricBar('Qualidade-das-Fontes', data.analiseDetalhada.fontes.score);
+        if (data.analiseDetalhada.integridade) {
+            paintMetricBar('Análise-de-Integridade', data.analiseDetalhada.integridade.score);
+        }
 
     } catch (e) {
         resultElement.innerHTML = `<div style="color: #e74c3c; font-weight: bold;">Erro ao processar o resultado da análise da imagem.</div>`;

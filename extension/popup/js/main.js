@@ -47,9 +47,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if (tabName === 'analysis' && document.getElementById('analysisResultContainer').classList.contains('hidden')) {
             applyCompact = true;
         }
-        // Condição CORRIGIDA para a aba de Análise por Imagem
-        if (tabName === 'imageAnalysis' && document.getElementById('imagePreviewContainer').classList.contains('hidden')) {
-            applyCompact = true;
+        // Condição para a aba de Análise por Imagem
+        if (tabName === 'imageAnalysis') {
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            const resultContainer = document.getElementById('imageAnalysisResult');
+
+            // A tela só deve ser compacta se NÃO houver pré-visualização E NÃO houver resultado.
+            if (previewContainer.classList.contains('hidden') && !resultContainer.dataset.hasContent) {
+                applyCompact = true;
+            }
         }
 
         if (applyCompact) {
@@ -206,7 +212,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    elements.imageAnalysis.selectFileButton.addEventListener('click', () => {
+    elements.imageAnalysis.selectFileButton.addEventListener('click', (event) => {
+        event.stopPropagation(); // Impede que o evento de clique continue para o elemento pai.
         elements.imageAnalysis.upload.click();
     });
 
