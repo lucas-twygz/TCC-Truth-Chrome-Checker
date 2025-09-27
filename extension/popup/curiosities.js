@@ -1,0 +1,22 @@
+const curiosities = [
+    "Notícias falsas se espalham 6 vezes mais rápido que as verdadeiras, segundo um estudo do MIT.",
+    "Emoções como raiva e surpresa são os principais combustíveis para o compartilhamento de desinformação.",
+    "Títulos com palavras como 'chocante', 'inacreditável' ou 'segredo revelado' são quase sempre um sinal de alerta.",
+    "Verifique a data! Muitas fake news usam notícias antigas e as apresentam como se fossem atuais.",
+    "Desconfie de prints de notícias! É muito fácil criar uma imagem falsa de um portal de notícias.",
+    "Boatos tendem a citar fontes genéricas como 'especialistas' ou 'estudos científicos' sem fornecer links ou nomes.",
+    "A repetição de uma mentira pode fazer com que nosso cérebro comece a aceitá-la como verdade, um efeito chamado 'ilusão da verdade'.",
+    "Contas falsas (bots) são frequentemente usadas para amplificar artificialmente o alcance de notícias enganosas.",
+    "Erros de gramática ou formatação estranha em um texto de notícia são um forte indício de baixa credibilidade.",
+    "Antes de compartilhar, pergunte-se: 'Eu procurei por essa informação em outro lugar?'. Uma busca rápida pode revelar a verdade.",
+    "O 'viés de confirmação' nos torna mais propensos a acreditar em informações que confirmam nossas crenças existentes.",
+    "Muitos sites de fake news imitam a aparência de portais de notícias conhecidos para enganar o leitor. Verifique sempre a URL.",
+    "A primeira grande 'fake news' da internet pode ter sido em 1994, sobre uma lei falsa que proibiria sexo após o casamento.",
+    "Fotos ou vídeos podem ser tirados de contexto. Use a busca reversa de imagens para descobrir a origem real de uma mídia.",
+    "A desinformação muitas vezes mistura fatos verdadeiros com informações falsas para parecer mais convincente.",
+    "Páginas com excesso de anúncios e pop-ups geralmente têm como objetivo o lucro, não a informação de qualidade.",
+    "Notícias que pedem para serem compartilhadas 'o máximo possível' raramente são fontes confiáveis de informação.",
+    "Verificar a seção 'Sobre' de um site pode revelar muito sobre sua missão e credibilidade (ou a falta dela).",
+    "Cuidado com gráficos e estatísticas sem fonte. Dados podem ser facilmente manipulados para apoiar uma narrativa falsa.",
+    "Uma notícia verdadeira raramente é 'descoberta' por um único site desconhecido. Fatos importantes são reportados por várias fontes."
+];
