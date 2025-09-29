@@ -1,5 +1,5 @@
 import { elements } from './domElements.js';
-import { FAKE_NEWS_THRESHOLD } from '../config.js';
+import { FAKE_NEWS_THRESHOLD, STORAGE_KEYS } from '../config.js';
 import { extractPercentage } from '../utils/textUtils.js';
 
 export function switchTab(tabName) {
@@ -18,11 +18,13 @@ export function switchTab(tabName) {
 }
 
 export function loadSettingsScreenData(data) {
-    elements.settings.geminiApiKey.value = data.truthCheckerGeminiApiKey || '';
-    elements.settings.customSearchApiKey.value = data.truthCheckerCustomSearchApiKey || '';
-    elements.settings.searchEngineId.value = data.truthCheckerSearchEngineId || '';
-    elements.settings.userName.value = data.truthCheckerUserName || '';
-    elements.settings.debugModeToggle.checked = !!data.truthCheckerDebugModeEnabled;
+    elements.settings.geminiApiKey.value = data[STORAGE_KEYS.GEMINI_API_KEY] || '';
+    elements.settings.customSearchApiKey.value = data[STORAGE_KEYS.CUSTOM_SEARCH_API_KEY] || '';
+    elements.settings.searchEngineId.value = data[STORAGE_KEYS.SEARCH_ENGINE_ID] || '';
+    elements.settings.userName.value = data[STORAGE_KEYS.USER_NAME] || '';
+    elements.settings.debugModeToggle.checked = !!data[STORAGE_KEYS.DEBUG_MODE];
+    // Carrega a nova configuração de expansão
+    elements.settings.expandDetailsToggle.checked = !!data[STORAGE_KEYS.EXPAND_DETAILS_DEFAULT];
 }
 
 export function updateConfigStatus(message, type) {
@@ -131,15 +133,27 @@ function createMetricCard(metricName, score, text) {
     `;
 }
 
-export function displayAnalysisResults(responseText, isError = false, inProgress = false) {
+export function displayAnalysisResults(responseText, isError = false, inProgress = false, settings = {}) {
     document.body.classList.remove('compact');
     const resultContainer = document.getElementById('analysisResultContainer');
     const placeholder = document.getElementById('analysisPlaceholder');
-    const { gaugeBar, percentageText } = elements.analysis;
+    const { gaugeBar, percentageText, detailedContent, collapsibleHeader } = elements.analysis;
     const geralSummary = document.getElementById('geralSummary');
-    const detailedAnalysis = document.getElementById('detailedAnalysis');
     const sources = document.getElementById('sources');
     const sourcesTitle = document.getElementById('sourcesTitle');
+
+    // ** Lógica para expandir/recolher com base nas configurações **
+    const expandDefault = settings[STORAGE_KEYS.EXPAND_DETAILS_DEFAULT];
+    const arrowIcon = collapsibleHeader.querySelector('.arrow-icon');
+
+    if (expandDefault) {
+        detailedContent.classList.remove('collapsed');
+        arrowIcon.classList.remove('collapsed');
+    } else {
+        detailedContent.classList.add('collapsed');
+        arrowIcon.classList.add('collapsed');
+    }
+    // ** Fim da lógica **
 
     placeholder.classList.add('hidden');
     resultContainer.classList.remove('hidden');
@@ -156,7 +170,7 @@ export function displayAnalysisResults(responseText, isError = false, inProgress
         geralSummary.textContent = "Aguarde, processando...";
         gaugeBar.style.setProperty('--bar-width', '100%');
         gaugeBar.style.setProperty('--bar-color', '#7f8c8d');
-        detailedAnalysis.innerHTML = '';
+        detailedContent.innerHTML = ''; // Limpa o conteúdo detalhado
         sources.innerHTML = '';
         sourcesTitle.classList.add('hidden');
         return;
@@ -181,21 +195,21 @@ export function displayAnalysisResults(responseText, isError = false, inProgress
 
         geralSummary.textContent = data.resumoGeral;
 
+        detailedContent.innerHTML =
+            createMetricCard('Veracidade dos Fatos', data.analiseDetalhada.fatos.score, data.analiseDetalhada.fatos.texto) +
+            createMetricCard('Título e Sensacionalismo', data.analiseDetalhada.titulo.score, data.analiseDetalhada.titulo.texto) +
+            createMetricCard('Qualidade das Fontes', data.analiseDetalhada.fontes.score, data.analiseDetalhada.fontes.texto);
+
         const metricMap = {
             'Veracidade-dos-Fatos': 'fatos',
             'Título-e-Sensacionalismo': 'titulo',
             'Qualidade-das-Fontes': 'fontes'
         };
 
-        detailedAnalysis.innerHTML =
-            createMetricCard('Veracidade dos Fatos', data.analiseDetalhada.fatos.score, data.analiseDetalhada.fatos.texto) +
-            createMetricCard('Título e Sensacionalismo', data.analiseDetalhada.titulo.score, data.analiseDetalhada.titulo.texto) +
-            createMetricCard('Qualidade das Fontes', data.analiseDetalhada.fontes.score, data.analiseDetalhada.fontes.texto);
-
         Object.keys(metricMap).forEach(metricName => {
             const dataKey = metricMap[metricName];
             const score = data.analiseDetalhada[dataKey].score;
-            const element = detailedAnalysis.querySelector(`[data-metric="${metricName.replace(/\s+/g, '-')}"]`);
+            const element = detailedContent.querySelector(`[data-metric="${metricName.replace(/\s+/g, '-')}"]`);
             if (element) {
                 const color = score > 0 ? `hsl(${(score / 100) * 120}, 70%, 50%)` : '#d3d3d3';
                 element.style.setProperty('--bar-width', `${score}%`);
@@ -205,19 +219,19 @@ export function displayAnalysisResults(responseText, isError = false, inProgress
 
         let sourcesHTML = '';
         const { confirmam, contestam } = data.fontesVerificadas;
-        if (confirmam && confirmam.length > 0) {
+        if (confirmam?.length > 0) {
             sourcesHTML += '<h5>Fontes que Confirmam:</h5>';
             confirmam.forEach(fonte => {
-                if (fonte && fonte.url && isValidURL(fonte.url)) {
-                    sourcesHTML += `<div class="source-item">✅ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
+                if (fonte?.url && isValidURL(fonte.url)) {
+                    sourcesHTML += `<div class="source-item">✅ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.', '')}</a></div>`;
                 }
             });
         }
-        if (contestam && contestam.length > 0) {
+        if (contestam?.length > 0) {
             sourcesHTML += '<h5>Fontes que Contestam:</h5>';
             contestam.forEach(fonte => {
-                if (fonte && fonte.url && isValidURL(fonte.url)) {
-                    sourcesHTML += `<div class="source-item">❌ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
+                if (fonte?.url && isValidURL(fonte.url)) {
+                    sourcesHTML += `<div class="source-item">❌ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.', '')}</a></div>`;
                 }
             });
         }
@@ -298,19 +312,19 @@ export function hideCachePromptModal() {
     elements.modals.cachePrompt.classList.add('hidden');
 }
 
-export function displayImageAnalysisResults(responseText, isError = false, inProgress = false) {
+export function displayImageAnalysisResults(responseText, isError = false, inProgress = false, settings = {}) {
     document.body.classList.remove('compact');
     const resultElement = elements.imageAnalysis.result;
 
     if (isError) {
-        resultElement.innerHTML = `<p class="analysis-placeholder" style="color: #e74c3c;">${responseText}</p>`;
+        resultElement.innerHTML = `<p class="analysis-error">${responseText}</p>`;
         resultElement.dataset.hasContent = 'true';
         return;
     }
 
     if (inProgress) {
         resultElement.innerHTML = `<p class="analysis-placeholder">${responseText}</p>`;
-        resultElement.dataset.hasContent = 'false'; // Não há conteúdo final ainda
+        resultElement.dataset.hasContent = 'false';
         return;
     }
 
@@ -325,6 +339,10 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
         const data = JSON.parse(responseText);
         resultElement.dataset.hasContent = 'true';
 
+        // ** Lógica para expandir/recolher com base nas configurações **
+        const expandDefault = settings[STORAGE_KEYS.EXPAND_DETAILS_DEFAULT];
+        const collapsedClass = expandDefault ? '' : 'collapsed';
+
         // --- Bloco de Fontes (Sources) ---
         let sourcesHTML = '';
         const { confirmam, contestam } = data.fontesVerificadas;
@@ -332,7 +350,7 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
             sourcesHTML += '<h5>Fontes que Confirmam:</h5>';
             confirmam.forEach(fonte => {
                 if (fonte?.url && isValidURL(fonte.url)) {
-                    sourcesHTML += `<div class="source-item">✅ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
+                    sourcesHTML += `<div class="source-item">✅ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.', '')}</a></div>`;
                 }
             });
         }
@@ -340,26 +358,26 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
             sourcesHTML += '<h5>Fontes que Contestam:</h5>';
             contestam.forEach(fonte => {
                 if (fonte?.url && isValidURL(fonte.url)) {
-                    sourcesHTML += `<div class="source-item">❌ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
+                    sourcesHTML += `<div class="source-item">❌ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.', '')}</a></div>`;
                 }
             });
         }
-        const sourcesBlock = (sourcesHTML !== '')
-            ? `<div class="sources-container">
-                 <h3>Fontes Utilizadas</h3>
-                 <div class="sources-card"><div class="sources-list-container">${sourcesHTML}</div></div>
-               </div>`
-            : '';
-
-        // --- Bloco de Análise Detalhada (com o card de Integridade incluído) ---
-        const detailedAnalysisBlock = `
-            <div class="detailed-analysis-container">
-                ${createMetricCard('Veracidade dos Fatos', data.analiseDetalhada.fatos.score, data.analiseDetalhada.fatos.texto)}
-                ${createMetricCard('Análise do Contexto', data.analiseDetalhada.titulo.score, data.analiseDetalhada.titulo.texto)}
-                ${createMetricCard('Qualidade das Fontes', data.analiseDetalhada.fontes.score, data.analiseDetalhada.fontes.texto)}
-                ${data.analiseDetalhada.integridade ? createMetricCard('Análise de Integridade', data.analiseDetalhada.integridade.score, data.analiseDetalhada.integridade.texto) : ''}
-            </div>
-        `;
+        let sourcesBlock;
+        if (sourcesHTML === '') {
+            sourcesBlock = `
+        <div class="sources-container">
+            <h3 id="sourcesTitle">Fontes Utilizadas</h3>
+            <p style="text-align: center; color: var(--text-color);">Nenhuma fonte externa foi encontrada para verificação.</p>
+        </div>
+    `;
+        } else {
+            sourcesBlock = `
+        <div class="sources-container">
+            <h3 id="sourcesTitle">Fontes Utilizadas</h3>
+            <div class="sources-card"><div class="sources-list-container">${sourcesHTML}</div></div>
+        </div>
+    `;
+        }
 
         // --- Montagem final do HTML ---
         resultElement.innerHTML = `
@@ -371,8 +389,16 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
             </div>
             <p class="geral-summary">${data.resumoGeral}</p>
             <hr class="divider">
-            <h3>Análise Detalhada</h3>
-            ${detailedAnalysisBlock}
+            <div class="collapsible-header">
+                <h3>Análise Detalhada</h3>
+                <span class="arrow-icon ${collapsedClass}"></span>
+            </div>
+            <div class="detailed-analysis-container collapsible-content ${collapsedClass}">
+                ${createMetricCard('Veracidade dos Fatos', data.analiseDetalhada.fatos.score, data.analiseDetalhada.fatos.texto)}
+                ${createMetricCard('Análise do Contexto', data.analiseDetalhada.contexto.score, data.analiseDetalhada.contexto.texto)}
+                ${createMetricCard('Qualidade das Fontes', data.analiseDetalhada.fontes.score, data.analiseDetalhada.fontes.texto)}
+                ${data.analiseDetalhada.integridade ? createMetricCard('Análise de Integridade', data.analiseDetalhada.integridade.score, data.analiseDetalhada.integridade.texto) : ''}
+            </div>
             ${sourcesBlock}
         `;
 
@@ -392,7 +418,7 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
         };
 
         paintMetricBar('Veracidade-dos-Fatos', data.analiseDetalhada.fatos.score);
-        paintMetricBar('Análise-do-Contexto', data.analiseDetalhada.titulo.score);
+        paintMetricBar('Análise-do-Contexto', data.analiseDetalhada.contexto.score);
         paintMetricBar('Qualidade-das-Fontes', data.analiseDetalhada.fontes.score);
         if (data.analiseDetalhada.integridade) {
             paintMetricBar('Análise-de-Integridade', data.analiseDetalhada.integridade.score);

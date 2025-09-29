@@ -652,7 +652,7 @@ h3 {
 }
 
 .history-item-result {
-    font-size: 0.9em; 
+    font-size: 0.9em;
     color: #34495e;
     line-height: 1.4;
     overflow: hidden;
@@ -918,4 +918,48 @@ body.compact {
     line-height: 1;
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Estilos da Seção Expansível --- */
+.collapsible-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none; /* Impede que o texto seja selecionado ao clicar */
+}
+
+.collapsible-header h3 {
+    text-align: left; /* Alinha o título à esquerda */
+}
+
+.arrow-icon {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid #34495e; /* Seta para baixo (expandido) */
+    transition: transform 0.3s ease;
+}
+
+.arrow-icon.collapsed {
+    transform: rotate(-90deg); /* Seta para a direita (recolhido) */
+}
+
+.collapsible-content {
+    max-height: 1500px; /* Um valor alto para garantir que todo o conteúdo caiba */
+    overflow: hidden;
+    transition: max-height 0.4s ease-in-out;
+}
+
+.collapsible-content.collapsed {
+    max-height: 0;
+    margin-top: 0; /* Remove margem quando recolhido */
+}
+
+/* Adicionado para tratar mensagens de erro sem violar o CSP */
+.analysis-error {
+    color: #e74c3c; /* Vermelho de erro */
+    text-align: center;
+    margin-top: 20px;
 }

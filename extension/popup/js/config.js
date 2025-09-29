@@ -5,7 +5,8 @@ export const STORAGE_KEYS = {
     SEARCH_ENGINE_ID: 'truthCheckerSearchEngineId',
     USER_NAME: 'truthCheckerUserName',
     HISTORY: 'analysisHistory',
-    DEBUG_MODE: 'debugModeEnabled'
+    DEBUG_MODE: 'debugModeEnabled',
+    EXPAND_DETAILS_DEFAULT: 'truthCheckerExpandDetails'
 };
 export const FAKE_NEWS_THRESHOLD = 40 // abaixo deste valor, a notícia é considerada de baixa veracidade
 export const HIGH_SCORE_THRESHOLD = 75 // acima deste valor, a trava de segurança para alegações extraordinárias é ativada

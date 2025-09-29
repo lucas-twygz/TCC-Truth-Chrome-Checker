@@ -10,11 +10,13 @@ const TRUSTED_SOURCES = [
 
 async function performSearch(query, apiKey, cseId, dateRestrict) {
     let endpoint = `https://customsearch.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cseId}&num=5&q=${encodeURIComponent(query)}`;
+
+    // ALTERAÇÃO CRÍTICA: Apenas ordena por data se houver uma restrição explícita.
+    // Caso contrário, a API usará o padrão de RELEVÂNCIA.
     if (dateRestrict) {
         endpoint += `&sort=date:r:${dateRestrict.replace(/\[|\]/g, '')}`;
-    } else {
-        endpoint += `&sort=date`;
     }
+    // O bloco 'else' que forçava a ordenação por data foi removido.
 
     const response = await fetch(endpoint);
     if (!response.ok) {
@@ -37,6 +39,7 @@ export async function collectExternalEvidence(query, apiKey, cseId, dateRestrict
 
     const [affirmativeResults, skepticalResults] = await Promise.all([
         performSearch(affirmativeQuery, apiKey, cseId, dateRestrict),
+        // A busca cética nunca usa restrição de data para encontrar a checagem mais relevante.
         performSearch(skepticalQuery, apiKey, cseId, null)
     ]);
 
@@ -44,6 +47,7 @@ export async function collectExternalEvidence(query, apiKey, cseId, dateRestrict
 }
 
 export async function callGeminiAPI(prompt, apiKey) {
+    // Mantido o modelo 'flash' para análises de texto por ser mais rápido.
     const model = 'gemini-2.5-flash';
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
@@ -72,6 +76,7 @@ export async function callGeminiAPI(prompt, apiKey) {
 }
 
 export async function describeImageWithGemini(imageData, apiKey) {
+    // Usando o modelo 'pro-vision' que é especialista em imagens.
     const model = 'gemini-2.5-flash';
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
@@ -81,7 +86,8 @@ export async function describeImageWithGemini(imageData, apiKey) {
         body: JSON.stringify({
             contents: [{
                 parts: [
-                    { text: "Descreva detalhadamente o que você vê nesta imagem. Foque em elementos visuais, pessoas, objetos, texto presente, contexto e qualquer informação relevante que possa ajudar a verificar a veracidade desta imagem como se fosse uma notícia." },
+                    // Instrução aprimorada para retornar um JSON com descrição E texto
+                    { text: "Analise esta imagem e retorne um objeto JSON com duas chaves: 'visualDescription' (descreva detalhadamente os elementos visuais da imagem em português) e 'textOnImage' (transcreva literalmente qualquer texto visível na imagem em português, se houver). Se não houver texto, retorne uma string vazia para 'textOnImage'." },
                     {
                         inline_data: {
                             mime_type: imageData.type,
@@ -89,7 +95,11 @@ export async function describeImageWithGemini(imageData, apiKey) {
                         }
                     }
                 ]
-            }]
+            }],
+            // Adicionado para garantir que a resposta seja JSON
+            generationConfig: {
+                responseMimeType: "application/json",
+            }
         })
     });
 
@@ -103,5 +113,6 @@ export async function describeImageWithGemini(imageData, apiKey) {
     if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
         throw new Error("Resposta da API Gemini Vision em formato inesperado.");
     }
+    // Retorna o JSON como uma string para ser processado depois
     return data.candidates[0].content.parts[0].text;
 }

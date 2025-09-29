@@ -16,13 +16,15 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentFilter = 'all';
     let currentHistory = [];
 
-    const onHistoryClick = (item) => {
+    const onHistoryClick = async (item) => {
+        // Pega as configurações mais recentes para passar para a UI
+        const allData = await storage.getAllData();
         if (item.type === 'image') {
             ui.switchTab('imageAnalysis');
-            ui.displayImageAnalysisResults(item.resultText, false);
+            ui.displayImageAnalysisResults(item.resultText, false, false, allData);
         } else {
             ui.switchTab('analysis');
-            ui.displayAnalysisResults(item.resultText, false);
+            ui.displayAnalysisResults(item.resultText, false, false, allData);
         }
     };
 
@@ -43,16 +45,12 @@ document.addEventListener("DOMContentLoaded", () => {
         chrome.storage.local.set({ lastActiveTab: tabName });
 
         let applyCompact = false;
-        // Condição para a aba de Análise de Página
         if (tabName === 'analysis' && document.getElementById('analysisResultContainer').classList.contains('hidden')) {
             applyCompact = true;
         }
-        // Condição para a aba de Análise por Imagem
         if (tabName === 'imageAnalysis') {
             const previewContainer = document.getElementById('imagePreviewContainer');
             const resultContainer = document.getElementById('imageAnalysisResult');
-
-            // A tela só deve ser compacta se NÃO houver pré-visualização E NÃO houver resultado.
             if (previewContainer.classList.contains('hidden') && !resultContainer.dataset.hasContent) {
                 applyCompact = true;
             }
@@ -72,42 +70,57 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
     };
+
     const handleStartAnalysis = async () => {
         const allData = await storage.getAllData();
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
         if (!tab || !tab.id) {
             ui.switchTab('analysis');
-            return ui.displayAnalysisResults("Nenhuma aba ativa encontrada.", true);
+            return ui.displayAnalysisResults("Nenhuma aba ativa encontrada.", true, false, allData);
         }
-        if (["chrome:", "about:", "edge:"].some(p => tab.url.startsWith(p))) {
+
+        const protectedUrls = ["chrome:", "about:", "edge:", "https://chrome.google.com/"];
+        if (protectedUrls.some(p => tab.url.startsWith(p)) || tab.url.endsWith(".pdf")) {
             ui.switchTab('analysis');
-            return ui.displayAnalysisResults("Não é possível analisar este tipo de página especial.", true);
+            return ui.displayAnalysisResults("Não é possível analisar este tipo de página especial (ex: loja de extensões, PDFs, páginas do navegador).", true, false, allData);
         }
+
         currentAnalysisParams = { ...allData, url: tab.url };
         const history = await storage.getHistory();
         const recentEntry = history.find(item => item.url === tab.url && (Date.now() - new Date(item.timestamp).getTime()) < ONE_DAY_IN_MS);
+
         if (recentEntry) {
             currentCachedData = recentEntry;
             ui.showCachePromptModal(recentEntry);
             return;
         }
+
         ui.switchTab('analysis');
         try {
-            ui.displayAnalysisResults("Extraindo conteúdo da página...", false, true);
+            ui.displayAnalysisResults("Extraindo conteúdo da página...", false, true, allData);
+
             const response = await chrome.tabs.sendMessage(tab.id, { action: "getArticle" });
-            if (!response || !response.article) return ui.displayAnalysisResults("Não foi possível extrair o conteúdo.", true);
+
+            if (!response || !response.article) {
+                return ui.displayAnalysisResults("Não foi possível extrair o conteúdo desta página. Tente em uma notícia com mais texto.", true, false, allData);
+            }
+
             currentAnalysisParams.content = response.article;
             performAnalysis(currentAnalysisParams);
+
         } catch (error) {
-            ui.displayAnalysisResults("Falha ao comunicar com a página. Recarregue a extensão e a página.", true);
+            console.error("Falha na comunicação com o content script:", error);
+            ui.displayAnalysisResults("Falha ao comunicar com a página. Por favor, recarregue a extensão e a página e tente novamente.", true, false, allData);
         }
     };
 
     const performAnalysis = async (params) => {
         try {
-            const updateStatus = (status) => ui.displayAnalysisResults(status, false, true);
+            const allData = await storage.getAllData();
+            const updateStatus = (status) => ui.displayAnalysisResults(status, false, true, allData);
             const resultText = await analyzeNews(params, updateStatus);
-            ui.displayAnalysisResults(resultText, false, false);
+            ui.displayAnalysisResults(resultText, false, false, allData);
         } catch (error) {
             ui.displayAnalysisResults(`Erro na análise: ${error.message}`, true, false);
         }
@@ -120,6 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
             searchEngineId: elements.settings.searchEngineId.value.trim(),
             userName: elements.settings.userName.value.trim(),
             debugMode: elements.settings.debugModeToggle.checked,
+            expandDetails: elements.settings.expandDetailsToggle.checked
         };
         try {
             await storage.saveSettings(settings);
@@ -155,7 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.buttons.startAnalysisPage.addEventListener('click', handleStartAnalysis);
     elements.home.lastAnalysisCard.addEventListener('click', () => handleNavigation('history'));
     elements.buttons.saveSettings.addEventListener('click', handleSaveSettings);
-    elements.buttons.exportHistory.addEventListener('click', () => storage.getHistory().then(ui.exportHistory));
+    elements.buttons.exportHistory.addEventListener('click', () => storage.getHistory().then(storage.exportHistory));
     elements.buttons.importHistory.addEventListener('click', () => elements.settings.importHistoryInput.click());
     elements.settings.importHistoryInput.addEventListener('change', handleImportHistory);
 
@@ -177,10 +191,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setActiveFilterButton('filterAll');
 
-    elements.buttons.useCachedResult.addEventListener('click', () => {
+    elements.buttons.useCachedResult.addEventListener('click', async () => {
         if (currentCachedData) {
+            const allData = await storage.getAllData();
             ui.switchTab('analysis');
-            ui.displayAnalysisResults(currentCachedData.resultText, false);
+            ui.displayAnalysisResults(currentCachedData.resultText, false, false, allData);
         }
         ui.hideCachePromptModal();
     });
@@ -189,7 +204,8 @@ document.addEventListener("DOMContentLoaded", () => {
         ui.hideCachePromptModal();
         ui.switchTab('analysis');
         try {
-            ui.displayAnalysisResults("Extraindo conteúdo para reanálise...", false, true);
+            const allData = await storage.getAllData();
+            ui.displayAnalysisResults("Extraindo conteúdo para reanálise...", false, true, allData);
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             const response = await chrome.tabs.sendMessage(tab.id, { action: "getArticle" });
             currentAnalysisParams.content = response.article;
@@ -213,7 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     elements.imageAnalysis.selectFileButton.addEventListener('click', (event) => {
-        event.stopPropagation(); // Impede que o evento de clique continue para o elemento pai.
+        event.stopPropagation();
         elements.imageAnalysis.upload.click();
     });
 
@@ -263,23 +279,42 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.imageAnalysis.analyzeButton.addEventListener('click', async () => {
         if (!imageFile) return;
 
-        ui.displayImageAnalysisResults("Analisando imagem...", false, true);
+        const allData = await storage.getAllData();
+        ui.displayImageAnalysisResults("Analisando imagem...", false, true, allData);
         const reader = new FileReader();
         reader.onload = async (event) => {
             try {
                 const base64Data = event.target.result.split(',')[1];
                 const imageData = { type: imageFile.type, data: base64Data };
-                const allData = await storage.getAllData();
                 const result = await analyzeImage(imageData, allData, (status) => {
-                    ui.displayImageAnalysisResults(status, false, true);
+                    ui.displayImageAnalysisResults(status, false, true, allData);
                 });
-                ui.displayImageAnalysisResults(result, false, false);
+                ui.displayImageAnalysisResults(result, false, false, allData);
             } catch (error) {
-                ui.displayImageAnalysisResults(`Erro na análise: ${error.message}`, true, false);
+                ui.displayImageAnalysisResults(`Erro na análise: ${error.message}`, true, false, allData);
             }
         };
         reader.readAsDataURL(imageFile);
     });
+
+    const setupCollapsibleBehavior = () => {
+        elements.analysis.collapsibleHeader.addEventListener('click', () => {
+            elements.analysis.detailedContent.classList.toggle('collapsed');
+            elements.analysis.collapsibleHeader.querySelector('.arrow-icon').classList.toggle('collapsed');
+        });
+
+        elements.imageAnalysis.result.addEventListener('click', (event) => {
+            const header = event.target.closest('.collapsible-header');
+            if (header) {
+                const content = header.nextElementSibling;
+                if (content && content.classList.contains('collapsible-content')) {
+                    content.classList.toggle('collapsed');
+                    header.querySelector('.arrow-icon').classList.toggle('collapsed');
+                }
+            }
+        });
+    };
+    setupCollapsibleBehavior();
 
     const init = async () => {
         const data = await storage.getAllData();

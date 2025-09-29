@@ -31,8 +31,11 @@ export const elements = {
         gaugeBar: document.getElementById('gaugeBar'),
         percentageText: document.getElementById('percentageText'),
         analysisResultText: document.getElementById('analysisResultText'),
+        collapsibleHeader: document.getElementById('text-analysis-collapsible-header'), // ADICIONE
+        detailedContent: document.getElementById('detailedAnalysis') // ADICIONE
     },
-   // Análise por Imagem
+
+    // Análise por Imagem
     imageAnalysis: {
         uploadArea: document.getElementById('uploadArea'),
         selectFileButton: document.getElementById('selectFileButton'),
@@ -62,6 +65,7 @@ export const elements = {
         debugModeToggle: document.getElementById('debugModeToggle'),
         importHistoryInput: document.getElementById('importHistoryInput'),
         configStatus: document.getElementById('configStatus'),
+        expandDetailsToggle: document.getElementById('expandDetailsToggle')
     },
     // Histórico
     history: {

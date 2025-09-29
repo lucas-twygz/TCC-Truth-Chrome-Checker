@@ -79,8 +79,11 @@
                 </div>
                 <p id="geralSummary" class="geral-summary"></p>
                 <hr class="divider">
-                <h3>Análise Detalhada</h3>
-                <div id="detailedAnalysis" class="detailed-analysis-container"></div>
+                <div class="collapsible-header" id="text-analysis-collapsible-header">
+                    <h3>Análise Detalhada</h3>
+                    <span class="arrow-icon collapsed"></span>
+                </div>
+                <div id="detailedAnalysis" class="detailed-analysis-container collapsible-content collapsed"></div>
                 <div class="sources-container">
                     <h3 id="sourcesTitle" class="hidden">Fontes Utilizadas</h3>
                     <div id="sources" class="sources-list"></div>
@@ -150,37 +153,38 @@
                 <input type="checkbox" id="debugModeToggle">
                 <p class="debug-note">Salva arquivos de log com os prompts e respostas da análise.</p>
             </div>
+            <div class="debug-mode-group">
+                <label for="expandDetailsToggle">Expandir análise detalhada por padrão</label>
+                <input type="checkbox" id="expandDetailsToggle">
+            </div>
             <div class="config-actions">
                 <button id="exportHistoryButton">Exportar Histórico</button>
                 <input type="file" id="importHistoryInput" accept=".json" class="hidden-file-input">
                 <button id="importHistoryButton">Importar Histórico</button>
             </div>
-            <p id="configStatus" class="status-message"></p>
-        </div>
-    </div>
 
-    <div id="cachePromptModal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Análise Anterior Encontrada</h3>
-            <p id="cachePromptDetails"></p>
-            <div class="cache-prompt-actions">
-                <button id="useCachedResultButton" class="action-button">Usar Resultado Anterior</button>
-                <button id="reanalyzeButton" class="action-button primary">Analisar Novamente</button>
+            <div id="cachePromptModal" class="modal hidden">
+                <div class="modal-content">
+                    <h3>Análise Anterior Encontrada</h3>
+                    <p id="cachePromptDetails"></p>
+                    <div class="cache-prompt-actions">
+                        <button id="useCachedResultButton" class="action-button">Usar Resultado Anterior</button>
+                        <button id="reanalyzeButton" class="action-button primary">Analisar Novamente</button>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-    <div id="tutorialModal" class="modal hidden">
-        <div class="modal-content">
-            <button class="modal-close-button" id="modalCloseButton" title="Fechar tutorial">&times;</button>
-            <div class="modal-body">
-                <h3 id="tutorialTitle"></h3>
-                <div id="tutorialBody" class="tutorial-body-content"></div>
+            <div id="tutorialModal" class="modal hidden">
+                <div class="modal-content">
+                    <button class="modal-close-button" id="modalCloseButton" title="Fechar tutorial">&times;</button>
+                    <div class="modal-body">
+                        <h3 id="tutorialTitle"></h3>
+                        <div id="tutorialBody" class="tutorial-body-content"></div>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
 
-    <script src="./curiosities.js"></script>
-    <script type="module" src="js/main.js"></script>
+            <script src="./curiosities.js"></script>
+            <script type="module" src="js/main.js"></script>
 </body>
 
 </html>
