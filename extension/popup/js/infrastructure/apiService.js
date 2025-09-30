@@ -1,15 +1,27 @@
 // apiService.js
 const TRUSTED_SOURCES = [
-  "bbc.com","nytimes.com","theguardian.com","reuters.com",
-  "apnews.com","cnn.com","estadao.com.br","g1.globo.com",
-  "globo.com","oglobo.globo.com","folha.uol.com.br",
-  "uol.com.br","terra.com.br","r7.com","correiobraziliense.com.br",
-  "veja.abril.com.br","band.uol.com.br","cnnbrasil.com.br",
-  "agencialupa.com","aosfatos.org","boatos.org","e-farsas.com",
-  "projetocomprova.com.br","drauziovarella.uol.com.br",
-  "variety.com","hollywoodreporter.com","deadline.com",
-  "washingtonpost.com","time.com","hbo.com","wbd.com","press.wbd.com","warnerbros.com"
+  // Internacionais
+  "bbc.com", "nytimes.com", "theguardian.com", "reuters.com",
+  "apnews.com", "cnn.com", "washingtonpost.com", "time.com",
+
+  // Nacionais - Grandes portais
+  "estadao.com.br", "g1.globo.com", "globo.com", "oglobo.globo.com",
+  "folha.uol.com.br", "uol.com.br", "terra.com.br", "r7.com",
+  "correiobraziliense.com.br", "veja.abril.com.br", "band.uol.com.br",
+  "cnnbrasil.com.br", "metropoles.com", "poder360.com.br",
+
+  // Fact-checking especializado
+  "agencialupa.com", "aosfatos.org", "boatos.org", "e-farsas.com",
+  "projetocomprova.com.br", "fatooufake.g1.globo.com",
+
+  // Fontes especializadas
+  "drauziovarella.uol.com.br", "butantan.gov.br", "fiocruz.br",
+
+  // Entretenimento verificado
+  "variety.com", "hollywoodreporter.com", "deadline.com",
+  "hbo.com", "wbd.com", "press.wbd.com", "warnerbros.com"
 ];
+
 
 function safeHost(href) {
   try { return new URL(href).hostname.replace(/^www\./,''); } catch { return ""; }
@@ -44,7 +56,7 @@ async function performSearch(query, apiKey, cseId, dateRestrict) {
 
 export async function collectExternalEvidence(query, apiKey, cseId, dateRestrict = null) {
   const affirmativeQuery = query;
-  const skepticalQuery = `${query} é falso? farsa fraude checagem OR "${query}" fake hoax debunk`;
+  const skepticalQuery = `"${query}" é falso OR é fraude OR é mentira OR é boato OR checagem OR "fact check"`;
   const [affirmativeResults, skepticalResults] = await Promise.all([
     performSearch(affirmativeQuery, apiKey, cseId, dateRestrict),
     performSearch(skepticalQuery, apiKey, cseId, null)
@@ -53,7 +65,7 @@ export async function collectExternalEvidence(query, apiKey, cseId, dateRestrict
 }
 
 export async function callGeminiAPI(prompt, apiKey) {
-  const model = 'gemini-2.5-flash';
+  const model = 'gemini-2.0-flash';
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const response = await fetch(endpoint, {
@@ -79,7 +91,7 @@ export async function callGeminiAPI(prompt, apiKey) {
 }
 
 export async function describeImageWithGemini(imageData, apiKey) {
-  const model = 'gemini-2.5-flash';
+  const model = 'gemini-2.0-flash';
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const response = await fetch(endpoint, {
