@@ -303,19 +303,19 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
     const resultElement = elements.imageAnalysis.result;
 
     if (isError) {
-        resultElement.innerHTML = `<p class="analysis-placeholder" style="color: #e74c3c;">${responseText}</p>`;
+        resultElement.innerHTML = `<p class="analysis-placeholder error">${responseText}</p>`;
         resultElement.dataset.hasContent = 'true';
         return;
     }
 
     if (inProgress) {
-        resultElement.innerHTML = `<p class="analysis-placeholder">${responseText}</p>`;
+        resultElement.innerHTML = `<p class="analysis-placeholder error">${responseText}</p>`;
         resultElement.dataset.hasContent = 'false'; // Não há conteúdo final ainda
         return;
     }
 
     if (!responseText.trim().startsWith('{')) {
-        resultElement.innerHTML = `<p class="analysis-placeholder" style="color: #e74c3c;">A API retornou uma resposta inesperada (não-JSON).</p>`;
+        resultElement.innerHTML = `<p class="analysis-placeholder error">${responseText}</p>`;
         resultElement.dataset.hasContent = 'true';
         console.warn("A resposta não era JSON:", responseText);
         return;
@@ -351,13 +351,12 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
                </div>`
             : '';
 
-        // --- Bloco de Análise Detalhada (com o card de Integridade incluído) ---
         const detailedAnalysisBlock = `
             <div class="detailed-analysis-container">
                 ${createMetricCard('Veracidade dos Fatos', data.analiseDetalhada.fatos.score, data.analiseDetalhada.fatos.texto)}
                 ${createMetricCard('Análise do Contexto', data.analiseDetalhada.titulo.score, data.analiseDetalhada.titulo.texto)}
                 ${createMetricCard('Qualidade das Fontes', data.analiseDetalhada.fontes.score, data.analiseDetalhada.fontes.texto)}
-                ${data.analiseDetalhada.integridade ? createMetricCard('Análise de Integridade', data.analiseDetalhada.integridade.score, data.analiseDetalhada.integridade.texto) : ''}
+                
             </div>
         `;
 
@@ -394,9 +393,7 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
         paintMetricBar('Veracidade-dos-Fatos', data.analiseDetalhada.fatos.score);
         paintMetricBar('Análise-do-Contexto', data.analiseDetalhada.titulo.score);
         paintMetricBar('Qualidade-das-Fontes', data.analiseDetalhada.fontes.score);
-        if (data.analiseDetalhada.integridade) {
-            paintMetricBar('Análise-de-Integridade', data.analiseDetalhada.integridade.score);
-        }
+
 
     } catch (e) {
         resultElement.innerHTML = `<div style="color: #e74c3c; font-weight: bold;">Erro ao processar o resultado da análise da imagem.</div>`;

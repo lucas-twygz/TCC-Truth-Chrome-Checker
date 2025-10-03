@@ -380,9 +380,15 @@ h3 {
 
 /* --- Seção de Análise --- */
 .analysis-placeholder {
-    color: #7f8c8d;
-    text-align: center;
-    margin-top: 20px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.analysis-placeholder.error {
+  border: 2px solid #e74c3c;       /* vermelho */
+  background-color: #fdecea;       /* fundo vermelho claro */
+  color: #e74c3c;                  /* texto vermelho */
 }
 
 .geral-summary {

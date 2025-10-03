@@ -109,11 +109,16 @@ document.addEventListener("DOMContentLoaded", () => {
             const resultText = await analyzeNews(params, updateStatus);
             ui.displayAnalysisResults(resultText, false, false);
         } catch (error) {
-            ui.displayAnalysisResults(`Erro na análise: ${error.message}`, true, false);
+            if (error.message.includes('API key not valid')) {
+                ui.updateConfigStatus('Chave de API inválida. Verifique suas configurações.', 'error');
+                ui.displayAnalysisResults('Falha na análise devido a uma chave de API inválida. Por favor, acesse a aba de Configurações para corrigi-la.', true, false);
+            } else {
+                ui.displayAnalysisResults(`Erro na análise: ${error.message}`, true, false);
+            }
         }
     };
 
-    const handleSaveSettings = async () => {
+    const handleAutoSaveSettings = async () => {
         const settings = {
             geminiApiKey: elements.settings.geminiApiKey.value.trim(),
             customSearchApiKey: elements.settings.customSearchApiKey.value.trim(),
@@ -122,7 +127,17 @@ document.addEventListener("DOMContentLoaded", () => {
             debugMode: elements.settings.debugModeToggle.checked,
         };
         try {
+            // Apenas salva, sem notificar o usuário para não ser intrusivo
             await storage.saveSettings(settings);
+        } catch (e) {
+            // Em caso de erro no auto-save, podemos logar no console
+            console.error('Erro ao auto-salvar configurações:', e.message);
+        }
+    };
+
+    const handleSaveSettings = async () => {
+        try {
+            await handleAutoSaveSettings();
             ui.updateConfigStatus('Configurações salvas com sucesso!', 'success');
         } catch (e) {
             ui.updateConfigStatus(`Erro ao salvar: ${e.message}`, 'error');
@@ -158,6 +173,12 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.buttons.exportHistory.addEventListener('click', () => storage.getHistory().then(ui.exportHistory));
     elements.buttons.importHistory.addEventListener('click', () => elements.settings.importHistoryInput.click());
     elements.settings.importHistoryInput.addEventListener('change', handleImportHistory);
+
+    elements.settings.geminiApiKey.addEventListener('change', handleAutoSaveSettings);
+    elements.settings.customSearchApiKey.addEventListener('change', handleAutoSaveSettings);
+    elements.settings.searchEngineId.addEventListener('change', handleAutoSaveSettings);
+    elements.settings.userName.addEventListener('change', handleAutoSaveSettings);
+    elements.settings.debugModeToggle.addEventListener('click', handleAutoSaveSettings);
 
     elements.history.filterAll.addEventListener('click', () => {
         currentFilter = 'all';
@@ -275,8 +296,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 ui.displayImageAnalysisResults(result, false, false);
             } catch (error) {
-                ui.displayImageAnalysisResults(`Erro na análise: ${error.message}`, true, false);
+            if (error.message.includes('API key not valid')) {
+                ui.updateConfigStatus('Chave de API inválida. Verifique suas configurações.', 'error');
+                ui.displayAnalysisResults(
+                    'Falha na análise devido a uma chave de API inválida. Por favor, acesse a aba de Configurações para corrigi-la.',
+                    true, // <---- AQUI
+                    false
+                );
+            } else {
+                ui.displayAnalysisResults(`Erro na análise: ${error.message}`, true, false); // <---- AQUI
             }
+        }
         };
         reader.readAsDataURL(imageFile);
     });
