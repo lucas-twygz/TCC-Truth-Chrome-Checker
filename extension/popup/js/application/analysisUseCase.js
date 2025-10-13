@@ -128,7 +128,6 @@ export async function analyzeNews(params, updateStatus) {
   const { entidade, alegacao } = extractedData;
 
   updateStatus(`Buscando fatos sobre: ${alegacao}...`);
-  // --- CHAMADA 1 (2 buscas) ---
   let { affirmativeResults, skepticalResults } = await collectExternalEvidence(`${entidade} ${alegacao}`, truthCheckerCustomSearchApiKey, truthCheckerSearchEngineId);
 
   affirmativeResults = dedupeByLink(affirmativeResults);
@@ -137,21 +136,13 @@ export async function analyzeNews(params, updateStatus) {
   const totalInitial = affirmativeResults.length + skepticalResults.length;
   const trustedSources = affirmativeResults.filter(r => r.isTrusted).length + skepticalResults.filter(r => r.isTrusted).length;
 
-  // --- CONTROLE DE CHAMADAS ADICIONAIS ---
-  // Se a cobertura for baixa, fazemos UMA chamada adicional controlada, não um loop.
   if (totalInitial < 4 || trustedSources < 2) {
       updateStatus("Cobertura inicial baixa. Expandindo busca...");
-
-      // Monta uma única query com OR para vários sites prioritários
-      const prioritySitesQueryPart = PRIORITY_SITES.slice(0, 4) // Limita a 4 para não deixar a query longa demais
+      const prioritySitesQueryPart = PRIORITY_SITES.slice(0, 4)
           .map(site => `site:${site}`)
           .join(" OR ");
-
       const expandedQuery = `"${alegacao}" (${prioritySitesQueryPart})`;
-
-      // --- CHAMADA 2 (mais 2 buscas) ---
       const res = await collectExternalEvidence(expandedQuery, truthCheckerCustomSearchApiKey, truthCheckerSearchEngineId, null);
-
       affirmativeResults = dedupeByLink(affirmativeResults.concat(res.affirmativeResults || []));
       skepticalResults = dedupeByLink(skepticalResults.concat(res.skepticalResults || []));
   }
@@ -166,7 +157,6 @@ export async function analyzeNews(params, updateStatus) {
   const evidenceString = JSON.stringify({ affirmativeResults, skepticalResults }, null, 2);
 
   updateStatus("Analisando com IA...");
-  // --- CHAMADA 3 (1 chamada Gemini) ---
   const formatInstruction = `{
       "pontuacaoGeral": <número de 0 a 100>,
       "resumoGeral": "<resumo conciso da análise>",
@@ -181,11 +171,12 @@ export async function analyzeNews(params, updateStatus) {
       }
     }`;
 
+  const criticalRule = `- **Regra CRÍTICA para Fontes:** A pontuação de "fontes" NÃO é sobre a qualidade do domínio, mas se o CONTEÚDO da fonte (ver o snippet) APOIA a alegação da notícia. Se os snippets das fontes CONTRADIZEM a notícia (ex: dizem que OUTRA PESSOA ganhou o prêmio), a pontuação de "fontes" e "fatos" deve ser extremamente baixa (abaixo de 20). Fontes que contradizem devem ir para a lista "contestam".`;
+
   const preliminaryAnalysisPrompt = `
     Você é um especialista em checagem de fatos. Analise a notícia com base nas fontes externas.
     - Calcule a "pontuacaoGeral" com base na veracidade (60%), qualidade das fontes (30%) e sensacionalismo do título (10%).
-    - O resumo deve ser curto e direto.
-    - Preencha "fontesVerificadas" APENAS com URLs das fontes fornecidas.
+    ${criticalRule}
 
     FONTES EXTERNAS:
     ${evidenceString}
@@ -201,15 +192,12 @@ export async function analyzeNews(params, updateStatus) {
   let finalJsonResponse = await callGeminiAPI(preliminaryAnalysisPrompt, truthCheckerGeminiApiKey);
   const preliminaryScore = getScoreFromResponse(finalJsonResponse);
 
-  // Reanálise se o score for baixo (pode fazer chamadas adicionais)
   if (preliminaryScore !== null && preliminaryScore <= FAKE_NEWS_THRESHOLD) {
     updateStatus("Baixa confiança. Investigando ponto crítico...");
-    // --- CHAMADA 4 (1 chamada Gemini) ---
     const suspicionPrompt = `Qual o principal termo factual duvidoso na notícia (máx. 7 palavras)?`;
     const suspicionTerm = (await callGeminiAPI(suspicionPrompt, truthCheckerGeminiApiKey)).trim().replace(/["']/g, "");
 
     if (suspicionTerm && !suspicionTerm.toLowerCase().includes('n/a')) {
-      // --- CHAMADA 5 (mais 2 buscas) ---
       const { affirmativeResults: aff2 = [], skepticalResults: ske2 = [] } = await collectExternalEvidence(suspicionTerm, truthCheckerCustomSearchApiKey, truthCheckerSearchEngineId, null);
 
       const finalAffirmative = dedupeByLink(affirmativeResults.concat(aff2));
@@ -219,6 +207,7 @@ export async function analyzeNews(params, updateStatus) {
       const reAnalysisPrompt = `
         REAVALIAÇÃO (ponto investigado: "${suspicionTerm}"):
         Com base nas novas fontes, refine a análise.
+        ${criticalRule}
 
         FONTES ATUALIZADAS:
         ${additionalEvidenceString}
@@ -231,7 +220,6 @@ export async function analyzeNews(params, updateStatus) {
         ${formatInstruction}
         `;
       updateStatus("Reavaliando com novas informações...");
-      // --- CHAMADA 6 (1 chamada Gemini) ---
       finalJsonResponse = await callGeminiAPI(reAnalysisPrompt, truthCheckerGeminiApiKey);
     }
   }
