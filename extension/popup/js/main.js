@@ -38,21 +38,41 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     };
 
+    // NOVA FUNÇÃO para aplicar filtros de tipo E de busca
+    const applyHistoryFilters = () => {
+        const searchTerm = elements.history.searchInput.value.toLowerCase();
+
+        const filtered = currentHistory.filter(item => {
+            // 1. Filtro por tipo (Todas, Textuais, Imagens)
+            const typeMatch = (currentFilter === 'all') || (item.type === currentFilter);
+            if (!typeMatch) return false;
+
+            // 2. Filtro por termo de busca (se houver)
+            if (searchTerm) {
+                const titleMatch = item.title?.toLowerCase().includes(searchTerm);
+                const urlMatch = item.url?.toLowerCase().includes(searchTerm);
+                const resultMatch = item.resultText?.toLowerCase().includes(searchTerm);
+                return titleMatch || urlMatch || resultMatch;
+            }
+
+            return true; // Se não houver termo de busca, passa
+        });
+
+        ui.renderHistory(filtered, onHistoryClick);
+    };
+
+
     const handleNavigation = (tabName) => {
         ui.switchTab(tabName);
         chrome.storage.local.set({ lastActiveTab: tabName });
 
         let applyCompact = false;
-        // Condição para a aba de Análise de Página
         if (tabName === 'analysis' && document.getElementById('analysisResultContainer').classList.contains('hidden')) {
             applyCompact = true;
         }
-        // Condição para a aba de Análise por Imagem
         if (tabName === 'imageAnalysis') {
             const previewContainer = document.getElementById('imagePreviewContainer');
             const resultContainer = document.getElementById('imageAnalysisResult');
-
-            // A tela só deve ser compacta se NÃO houver pré-visualização E NÃO houver resultado.
             if (previewContainer.classList.contains('hidden') && !resultContainer.dataset.hasContent) {
                 applyCompact = true;
             }
@@ -68,7 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (tabName === 'history') {
             storage.getHistory().then(history => {
                 currentHistory = history;
-                ui.renderHistory(currentHistory, onHistoryClick, currentFilter);
+                applyHistoryFilters(); // Usa a nova função para renderizar
             });
         }
     };
@@ -112,6 +132,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (error.message.includes('API key not valid')) {
                 ui.updateConfigStatus('Chave de API inválida. Verifique suas configurações.', 'error');
                 ui.displayAnalysisResults('Falha na análise devido a uma chave de API inválida. Por favor, acesse a aba de Configurações para corrigi-la.', true, false);
+            } else if (error.message.includes('QUOTA_EXCEEDED')) {
+                // Nova condição para o erro de cota
+                ui.displayAnalysisResults('O limite diário de análises foi atingido. Por favor, tente novamente amanhã.', true, false);
             } else {
                 ui.displayAnalysisResults(`Erro na análise: ${error.message}`, true, false);
             }
@@ -124,13 +147,10 @@ document.addEventListener("DOMContentLoaded", () => {
             customSearchApiKey: elements.settings.customSearchApiKey.value.trim(),
             searchEngineId: elements.settings.searchEngineId.value.trim(),
             userName: elements.settings.userName.value.trim(),
-            debugMode: elements.settings.debugModeToggle.checked,
         };
         try {
-            // Apenas salva, sem notificar o usuário para não ser intrusivo
             await storage.saveSettings(settings);
         } catch (e) {
-            // Em caso de erro no auto-save, podemos logar no console
             console.error('Erro ao auto-salvar configurações:', e.message);
         }
     };
@@ -153,12 +173,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 const history = JSON.parse(e.target.result);
                 if (Array.isArray(history) && (history.length === 0 || (history[0].url && history[0].timestamp))) {
                     await storage.importHistory(history);
+                    currentHistory = history; // Atualiza a variável local
                     if (document.getElementById('historySection').classList.contains('active')) {
-                        ui.renderHistory(history, onHistoryClick);
+                        applyHistoryFilters(); // Re-renderiza a lista
                     }
-                    alert('Histórico importado com sucesso!');
+                    // SUBSTITUIÇÃO DO ALERT
+                    ui.updateConfigStatus('Histórico importado com sucesso!', 'success');
                 } else { throw new Error('Formato de arquivo inválido.'); }
-            } catch (error) { alert('Erro ao importar histórico: ' + error.message); }
+            } catch (error) {
+                // SUBSTITUIÇÃO DO ALERT DE ERRO
+                ui.updateConfigStatus(`Erro ao importar: ${error.message}`, 'error');
+            }
         };
         reader.readAsText(file);
     };
@@ -178,23 +203,25 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.settings.customSearchApiKey.addEventListener('change', handleAutoSaveSettings);
     elements.settings.searchEngineId.addEventListener('change', handleAutoSaveSettings);
     elements.settings.userName.addEventListener('change', handleAutoSaveSettings);
-    elements.settings.debugModeToggle.addEventListener('click', handleAutoSaveSettings);
 
     elements.history.filterAll.addEventListener('click', () => {
         currentFilter = 'all';
-        ui.renderHistory(currentHistory, onHistoryClick, currentFilter);
+        applyHistoryFilters();
         setActiveFilterButton('filterAll');
     });
     elements.history.filterText.addEventListener('click', () => {
         currentFilter = 'text';
-        ui.renderHistory(currentHistory, onHistoryClick, currentFilter);
+        applyHistoryFilters();
         setActiveFilterButton('filterText');
     });
     elements.history.filterImages.addEventListener('click', () => {
         currentFilter = 'image';
-        ui.renderHistory(currentHistory, onHistoryClick, currentFilter);
+        applyHistoryFilters();
         setActiveFilterButton('filterImages');
     });
+
+    // ADICIONADO: Event listener para o campo de busca
+    elements.history.searchInput.addEventListener('input', applyHistoryFilters);
 
     setActiveFilterButton('filterAll');
 
@@ -208,6 +235,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     elements.buttons.reanalyze.addEventListener('click', async () => {
         ui.hideCachePromptModal();
+        document.body.classList.add('compact');
         ui.switchTab('analysis');
         try {
             ui.displayAnalysisResults("Extraindo conteúdo para reanálise...", false, true);
@@ -215,7 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await chrome.tabs.sendMessage(tab.id, { action: "getArticle" });
             currentAnalysisParams.content = response.article;
             performAnalysis(currentAnalysisParams);
-        } catch(e) {
+        } catch (e) {
             ui.displayAnalysisResults("Falha ao obter conteúdo para reanálise.", true);
         }
     });
@@ -234,7 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     elements.imageAnalysis.selectFileButton.addEventListener('click', (event) => {
-        event.stopPropagation(); // Impede que o evento de clique continue para o elemento pai.
+        event.stopPropagation();
         elements.imageAnalysis.upload.click();
     });
 
@@ -296,17 +324,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 ui.displayImageAnalysisResults(result, false, false);
             } catch (error) {
-            if (error.message.includes('API key not valid')) {
-                ui.updateConfigStatus('Chave de API inválida. Verifique suas configurações.', 'error');
-                ui.displayAnalysisResults(
-                    'Falha na análise devido a uma chave de API inválida. Por favor, acesse a aba de Configurações para corrigi-la.',
-                    true, // <---- AQUI
-                    false
-                );
-            } else {
-                ui.displayAnalysisResults(`Erro na análise: ${error.message}`, true, false); // <---- AQUI
+                if (error.message.includes('API key not valid')) {
+                    ui.updateConfigStatus('Chave de API inválida. Verifique suas configurações.', 'error');
+                    ui.displayImageAnalysisResults(
+                        'Falha na análise devido a uma chave de API inválida. Por favor, acesse a aba de Configurações para corrigi-la.',
+                        true,
+                        false
+                    );
+                } else {
+                    ui.displayImageAnalysisResults(`Erro na análise: ${error.message}`, true, false);
+                }
             }
-        }
         };
         reader.readAsDataURL(imageFile);
     });

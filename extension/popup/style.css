@@ -20,15 +20,15 @@ body {
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    overflow: hidden;
 }
 
 .container {
     padding: 15px;
-    width: 100%;
     box-sizing: border-box;
     flex-grow: 1;
-    overflow-y: auto;
+    overflow-y: scroll;
+    border-top: 1px solid var(--border-color);
+    min-height: 0;
 }
 
 h1,
@@ -74,10 +74,10 @@ h3 {
     display: flex;
     justify-content: space-around;
     background-color: var(--card-background);
-    border-bottom: 1px solid var(--border-color);
-    padding: 4px;
+    padding: 4px 8px;
     width: 100%;
     gap: 4px;
+    box-sizing: border-box;
 }
 
 .nav-button {
@@ -380,9 +380,13 @@ h3 {
 
 /* --- Seção de Análise --- */
 .analysis-placeholder {
-  padding: 12px 16px;
-  border-radius: 6px;
+  padding: 30px 20px; /* Aumenta o espaçamento interno */
+  margin-top: 20px; /* Adiciona espaço do botão de cima */
+  border-radius: 8px; /* Bordas mais arredondadas */
   font-weight: 500;
+  text-align: center; /* Centraliza o texto */
+  color: #7f8c8d; /* Cor mais suave, de placeholder */
+  background-color: var(--card-background); /* Fundo branco */
 }
 
 .analysis-placeholder.error {
@@ -658,7 +662,7 @@ h3 {
 }
 
 .history-item-result {
-    font-size: 0.9em; 
+    font-size: 0.9em;
     color: #34495e;
     line-height: 1.4;
     overflow: hidden;
@@ -691,29 +695,6 @@ h3 {
 .divider {
     border-top: 1px solid var(--border-color);
     margin: 20px 0;
-}
-
-.debug-mode-group {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background-color: #ecf0f1;
-    padding: 10px 15px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
-}
-
-.debug-mode-group label {
-    margin: 0;
-    font-weight: 500;
-}
-
-.debug-note {
-    font-size: 0.8em;
-    color: #7f8c8d;
-    margin-top: 5px;
-    flex-basis: 100%;
 }
 
 .config-actions {
@@ -924,4 +905,23 @@ body.compact {
     line-height: 1;
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Estilos da Barra de Rolagem Customizada (Global) --- */
+*::-webkit-scrollbar {
+    width: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 4px;
+    border: 2px solid var(--background-color); /* Cria um espaçamento */
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: #95a5a6;
 }

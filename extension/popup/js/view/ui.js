@@ -22,7 +22,6 @@ export function loadSettingsScreenData(data) {
     elements.settings.customSearchApiKey.value = data.truthCheckerCustomSearchApiKey || '';
     elements.settings.searchEngineId.value = data.truthCheckerSearchEngineId || '';
     elements.settings.userName.value = data.truthCheckerUserName || '';
-    elements.settings.debugModeToggle.checked = !!data.truthCheckerDebugModeEnabled;
 }
 
 export function updateConfigStatus(message, type) {
@@ -132,7 +131,6 @@ function createMetricCard(metricName, score, text) {
 }
 
 export function displayAnalysisResults(responseText, isError = false, inProgress = false) {
-    document.body.classList.remove('compact');
     const resultContainer = document.getElementById('analysisResultContainer');
     const placeholder = document.getElementById('analysisPlaceholder');
     const { gaugeBar, percentageText } = elements.analysis;
@@ -140,11 +138,15 @@ export function displayAnalysisResults(responseText, isError = false, inProgress
     const detailedAnalysis = document.getElementById('detailedAnalysis');
     const sources = document.getElementById('sources');
     const sourcesTitle = document.getElementById('sourcesTitle');
+    // Adicionados para controle
+    const detailedAnalysisTitle = document.getElementById('detailedAnalysisTitle');
+    const resultDivider = document.getElementById('resultDivider');
 
     placeholder.classList.add('hidden');
     resultContainer.classList.remove('hidden');
 
     if (isError) {
+        document.body.classList.remove('compact');
         resultContainer.classList.add('hidden');
         placeholder.classList.remove('hidden');
         placeholder.textContent = responseText;
@@ -159,8 +161,16 @@ export function displayAnalysisResults(responseText, isError = false, inProgress
         detailedAnalysis.innerHTML = '';
         sources.innerHTML = '';
         sourcesTitle.classList.add('hidden');
+        // Esconde os elementos durante o progresso
+        if (detailedAnalysisTitle) detailedAnalysisTitle.classList.add('hidden');
+        if (resultDivider) resultDivider.classList.add('hidden');
         return;
     }
+
+    document.body.classList.remove('compact');
+    // Mostra os elementos quando a análise termina
+    if (detailedAnalysisTitle) detailedAnalysisTitle.classList.remove('hidden');
+    if (resultDivider) resultDivider.classList.remove('hidden');
 
     if (!responseText.trim().startsWith('{')) {
         resultContainer.classList.add('hidden');
@@ -238,16 +248,9 @@ export function displayAnalysisResults(responseText, isError = false, inProgress
     }
 }
 
-export function renderHistory(history, onHistoryItemClick, filter = 'all') {
+export function renderHistory(filteredHistory, onHistoryItemClick) {
     const container = elements.history.listContainer;
     container.innerHTML = '';
-
-    const filteredHistory = history.filter(item => {
-        if (filter === 'all') return true;
-        if (filter === 'text') return item.type === 'text';
-        if (filter === 'image') return item.type === 'image';
-        return true;
-    });
 
     if (filteredHistory.length === 0) {
         container.textContent = 'Nenhum registro encontrado.';
@@ -276,6 +279,7 @@ export function renderHistory(history, onHistoryItemClick, filter = 'all') {
         container.appendChild(div);
     });
 }
+
 
 export function showCachePromptModal(cachedEntry) {
     document.body.classList.remove('compact');
@@ -356,7 +360,7 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
                 ${createMetricCard('Veracidade dos Fatos', data.analiseDetalhada.fatos.score, data.analiseDetalhada.fatos.texto)}
                 ${createMetricCard('Análise do Contexto', data.analiseDetalhada.titulo.score, data.analiseDetalhada.titulo.texto)}
                 ${createMetricCard('Qualidade das Fontes', data.analiseDetalhada.fontes.score, data.analiseDetalhada.fontes.texto)}
-                
+
             </div>
         `;
 
@@ -398,5 +402,32 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
     } catch (e) {
         resultElement.innerHTML = `<div style="color: #e74c3c; font-weight: bold;">Erro ao processar o resultado da análise da imagem.</div>`;
         console.error("Erro ao exibir resultado da imagem:", e);
+    }
+}
+
+export function exportHistory(history) {
+    if (!history || history.length === 0) {
+        alert('O histórico está vazio. Nada para exportar.');
+        return;
+    }
+
+    try {
+        const jsonString = JSON.stringify(history, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+
+        a.href = url;
+        a.download = `historico_analises_${new Date().toISOString().slice(0, 10)}.json`;
+
+        document.body.appendChild(a);
+        a.click();
+
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+    } catch (error) {
+        alert('Ocorreu um erro ao exportar o histórico.');
+        console.error('Erro na exportação:', error);
     }
 }

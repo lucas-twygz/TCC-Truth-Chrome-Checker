@@ -78,8 +78,8 @@
                     </div>
                 </div>
                 <p id="geralSummary" class="geral-summary"></p>
-                <hr class="divider">
-                <h3>Análise Detalhada</h3>
+                <hr id="resultDivider" class="divider">
+                <h3 id="detailedAnalysisTitle">Análise Detalhada</h3>
                 <div id="detailedAnalysis" class="detailed-analysis-container"></div>
                 <div class="sources-container">
                     <h3 id="sourcesTitle" class="hidden">Fontes Utilizadas</h3>
@@ -144,12 +144,6 @@
 
             <div class="divider"></div>
 
-            <h3>Gerenciamento de Dados</h3>
-            <div class="debug-mode-group">
-                <label for="debugModeToggle">Modo Desenvolvedor</label>
-                <input type="checkbox" id="debugModeToggle">
-                <p class="debug-note">Salva arquivos de log com os prompts e respostas da análise.</p>
-            </div>
             <div class="config-actions">
                 <button id="exportHistoryButton">Exportar Histórico</button>
                 <input type="file" id="importHistoryInput" accept=".json" class="hidden-file-input">

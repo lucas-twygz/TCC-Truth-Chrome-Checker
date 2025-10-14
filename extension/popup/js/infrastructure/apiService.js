@@ -39,6 +39,10 @@ async function performSearch(query, apiKey, cseId, dateRestrict) {
   const response = await fetch(endpoint);
   if (!response.ok) {
     const errorDetails = await response.text();
+    // CORREÇÃO: Verificando pela string correta "RATE_LIMIT_EXCEEDED"
+    if (response.status === 429 && errorDetails.includes('RATE_LIMIT_EXCEEDED')) {
+        throw new Error("QUOTA_EXCEEDED"); // Mantemos o mesmo erro interno para o main.js pegar
+    }
     throw new Error(`Erro na API de Pesquisa Google (${response.status}). Detalhes: ${errorDetails}`);
   }
   const data = await response.json();
