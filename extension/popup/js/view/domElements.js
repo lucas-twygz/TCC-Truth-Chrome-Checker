@@ -59,7 +59,6 @@ export const elements = {
         geminiApiKey: document.getElementById('geminiApiKey'),
         customSearchApiKey: document.getElementById('customSearchApiKey'),
         searchEngineId: document.getElementById('programmableSearchEngineId'),
-        debugModeToggle: document.getElementById('debugModeToggle'),
         importHistoryInput: document.getElementById('importHistoryInput'),
         configStatus: document.getElementById('configStatus'),
     },

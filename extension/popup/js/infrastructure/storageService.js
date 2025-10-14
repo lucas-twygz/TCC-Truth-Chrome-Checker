@@ -6,7 +6,6 @@ export async function saveSettings(settings) {
         [STORAGE_KEYS.CUSTOM_SEARCH_API_KEY]: settings.customSearchApiKey,
         [STORAGE_KEYS.SEARCH_ENGINE_ID]: settings.searchEngineId,
         [STORAGE_KEYS.USER_NAME]: settings.userName,
-        [STORAGE_KEYS.DEBUG_MODE]: settings.debugMode,
     };
     return chrome.storage.local.set(dataToSave);
 }
