@@ -111,6 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ui.showCachePromptModal(recentEntry);
             return;
         }
+        document.body.classList.add('compact');
         ui.switchTab('analysis');
         try {
             ui.displayAnalysisResults("Extraindo conteúdo da página...", false, true);

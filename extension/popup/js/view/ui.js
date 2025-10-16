@@ -214,20 +214,13 @@ export function displayAnalysisResults(responseText, isError = false, inProgress
         });
 
         let sourcesHTML = '';
-        const { confirmam, contestam } = data.fontesVerificadas;
-        if (confirmam && confirmam.length > 0) {
-            sourcesHTML += '<h5>Fontes que Confirmam:</h5>';
-            confirmam.forEach(fonte => {
+        // MODIFICADO: Usa a nova lista "fontesUtilizadas" se existir.
+        const fontes = data.fontesUtilizadas || (data.fontesVerificadas ? [].concat(data.fontesVerificadas.confirmam || [], data.fontesVerificadas.contestam || []) : []);
+
+        if (fontes.length > 0) {
+            fontes.forEach(fonte => {
                 if (fonte && fonte.url && isValidURL(fonte.url)) {
-                    sourcesHTML += `<div class="source-item">✅ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
-                }
-            });
-        }
-        if (contestam && contestam.length > 0) {
-            sourcesHTML += '<h5>Fontes que Contestam:</h5>';
-            contestam.forEach(fonte => {
-                if (fonte && fonte.url && isValidURL(fonte.url)) {
-                    sourcesHTML += `<div class="source-item">❌ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
+                    sourcesHTML += `<div class="source-item"><a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
                 }
             });
         }
@@ -313,8 +306,8 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
     }
 
     if (inProgress) {
-        resultElement.innerHTML = `<p class="analysis-placeholder error">${responseText}</p>`;
-        resultElement.dataset.hasContent = 'false'; // Não há conteúdo final ainda
+        resultElement.innerHTML = `<p class="analysis-placeholder">${responseText}</p>`;
+        resultElement.dataset.hasContent = 'false';
         return;
     }
 
@@ -329,25 +322,17 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
         const data = JSON.parse(responseText);
         resultElement.dataset.hasContent = 'true';
 
-        // --- Bloco de Fontes (Sources) ---
         let sourcesHTML = '';
-        const { confirmam, contestam } = data.fontesVerificadas;
-        if (confirmam?.length > 0) {
-            sourcesHTML += '<h5>Fontes que Confirmam:</h5>';
-            confirmam.forEach(fonte => {
-                if (fonte?.url && isValidURL(fonte.url)) {
-                    sourcesHTML += `<div class="source-item">✅ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
+        const fontes = data.fontesUtilizadas || (data.fontesVerificadas ? [].concat(data.fontesVerificadas.confirmam || [], data.fontesVerificadas.contestam || []) : []);
+
+        if (fontes.length > 0) {
+            fontes.forEach(fonte => {
+                if (fonte && fonte.url && isValidURL(fonte.url)) {
+                    sourcesHTML += `<div class="source-item"><a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
                 }
             });
         }
-        if (contestam?.length > 0) {
-            sourcesHTML += '<h5>Fontes que Contestam:</h5>';
-            contestam.forEach(fonte => {
-                if (fonte?.url && isValidURL(fonte.url)) {
-                    sourcesHTML += `<div class="source-item">❌ <a href="${fonte.url}" target="_blank">${new URL(fonte.url).hostname.replace('www.','')}</a></div>`;
-                }
-            });
-        }
+
         const sourcesBlock = (sourcesHTML !== '')
             ? `<div class="sources-container">
                  <h3>Fontes Utilizadas</h3>
@@ -360,7 +345,6 @@ export function displayImageAnalysisResults(responseText, isError = false, inPro
                 ${createMetricCard('Veracidade dos Fatos', data.analiseDetalhada.fatos.score, data.analiseDetalhada.fatos.texto)}
                 ${createMetricCard('Análise do Contexto', data.analiseDetalhada.titulo.score, data.analiseDetalhada.titulo.texto)}
                 ${createMetricCard('Qualidade das Fontes', data.analiseDetalhada.fontes.score, data.analiseDetalhada.fontes.texto)}
-
             </div>
         `;
 

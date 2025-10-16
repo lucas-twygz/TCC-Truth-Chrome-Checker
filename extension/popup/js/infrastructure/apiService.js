@@ -39,9 +39,8 @@ async function performSearch(query, apiKey, cseId, dateRestrict) {
   const response = await fetch(endpoint);
   if (!response.ok) {
     const errorDetails = await response.text();
-    // CORREÇÃO: Verificando pela string correta "RATE_LIMIT_EXCEEDED"
     if (response.status === 429 && errorDetails.includes('RATE_LIMIT_EXCEEDED')) {
-        throw new Error("QUOTA_EXCEEDED"); // Mantemos o mesmo erro interno para o main.js pegar
+        throw new Error("QUOTA_EXCEEDED");
     }
     throw new Error(`Erro na API de Pesquisa Google (${response.status}). Detalhes: ${errorDetails}`);
   }
@@ -104,7 +103,7 @@ export async function describeImageWithGemini(imageData, apiKey) {
     body: JSON.stringify({
       contents: [{
         parts: [
-          { text: "Descreva detalhadamente o que você vê nesta imagem. Foque em elementos visuais, pessoas, objetos, texto presente, contexto e qualquer informação relevante que possa ajudar a verificar a veracidade desta imagem como se fosse uma notícia." },
+          { text: "Sua tarefa é extrair a principal alegação factual e pesquisável desta imagem, como se fosse uma manchete de notícia. Ignore elementos de design, foque na informação central que a imagem tenta passar e que pode ser verificada." },
           { inline_data: { mime_type: imageData.type, data: imageData.data } }
         ]
       }]
