@@ -68,7 +68,7 @@ export async function collectExternalEvidence(query, apiKey, cseId, dateRestrict
 }
 
 export async function callGeminiAPI(prompt, apiKey) {
-  const model = 'gemini-2.0-flash';
+  const model = 'gemini-2.5-flash-lite';
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const response = await fetch(endpoint, {
@@ -94,7 +94,7 @@ export async function callGeminiAPI(prompt, apiKey) {
 }
 
 export async function describeImageWithGemini(imageData, apiKey) {
-  const model = 'gemini-2.0-flash';
+  const model = 'gemini-2.5-flash-lite';
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const response = await fetch(endpoint, {
